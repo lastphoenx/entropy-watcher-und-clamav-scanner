@@ -1,0 +1,47 @@
+# --- Python-Generelles ---
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+build/
+dist/
+
+# --- Umgebungen & Secrets (NIEMALS committen) ---
+# Alle .env-Dateien egal wo:
+*.env
+**/*.env
+.env
+.env.* 
+**/.env.*
+.venv/
+venv/
+# Beispiele dürfen rein (wenn du sie selbst anlegst)
+!config/*.env.example
+!config/**/*.env.example
+
+# --- Laufzeit-/State-Dateien ---
+state/
+**/state/
+*.pid
+*.log
+*.log.*
+*.sqlite
+*.db
+*.cache/
+.cache/
+tmp/
+*.bak
+*.swp
+*.swo
+*.bak*
+
+# --- Tools/Editoren ---
+.vscode/
+.idea/
+
+# --- Systemd: Laufzeitorte NICHT tracken ---
+/etc/
+
+# Dieses Unterrepo NICHT im Oberrepo tracken:
+# (wir wollen /opt/entropywatcher/pcloud als eigenes Repo)
+pcloud/
