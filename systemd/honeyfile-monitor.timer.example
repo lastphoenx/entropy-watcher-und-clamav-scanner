@@ -1,0 +1,12 @@
+[Unit]
+Description=Honeyfile Monitor Timer - Run every 5 minutes
+Documentation=man:systemd.timer(5) file:///opt/apps/entropy-watcher/docs/honeyfiles.md
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

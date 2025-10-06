@@ -1,0 +1,68 @@
+# --- Python-Generelles ---
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+build/
+dist/
+
+# --- Umgebungen & Secrets (NIEMALS committen) ---
+# Alle echten .env-Dateien ignorieren:
+config/*.env
+*.env
+**/*.env
+.env
+.env.* 
+**/.env.*
+.venv/
+venv/
+token.env
+*password*
+*secret*
+*_token*
+.env.local
+# ABER: .env.example Dateien PUSHEN (anonymisierte Beispieldateien)
+!config/*.env.example
+
+# ABER: .server-config/example/ Dateien PUSHEN (anonymisierte Templates)
+!*.timer.example
+!*.service.example
+
+# --- Laufzeit-/State-Dateien ---
+state/
+**/state/
+*.pid
+*.log
+*.log.*🔧 TODO auf dem Server:
+
+*.sqlite
+*.sqlite3
+*.db
+*.cache/
+.cache/
+tmp/
+*.bak
+*.swp
+*.swo
+*.bak*
+*test*
+*check*
+# ABER: Wichtige Utility-Scripts und Dokumentation MÜSSEN committed werden:
+!ew_backup_slot_check.sh
+!tools/test_mail_config.py
+!tools/check_services.sh
+!docs/TESTING.md
+*~
+last_alert*.txt
+*.pid
+
+# --- Tools/Editoren ---
+.vscode/
+.idea/
+
+# --- Systemd: Laufzeitorte NICHT tracken ---
+/etc/
+
+# Dieses Unterrepo NICHT im Oberrepo tracken:
+# (wir wollen /opt/entropywatcher/pcloud als eigenes Repo)
+pcloud/

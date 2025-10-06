@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pCloud Backup - All Timing Scenarios</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: #0a0e27;
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 2000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px 0;
+            border-bottom: 2px solid #4ac8ae;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #4ac8ae;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 0.95rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #4ac8ae;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            padding: 12px 20px;
+            background: #1a1a2e;
+            border: none;
+            color: #a0a0a0;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            color: #4ac8ae;
+            border-bottom-color: #4ac8ae;
+        }
+
+        .tab-button:hover {
+            color: #4ac8ae;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .diagram-wrapper {
+            background: #1a1a2e;
+            border: 2px solid #4ac8ae;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+
+        .timeline-svg {
+            min-width: fit-content;
+            border: 1px solid #333;
+        }
+
+        .legend {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1a1a2e;
+            border: 1px solid #4ac8ae;
+            border-radius: 8px;
+        }
+
+        .legend h3 {
+            color: #4ac8ae;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        tr {
+            border-bottom: 1px solid #333;
+        }
+
+        td {
+            padding: 8px;
+        }
+
+        td:first-child {
+            color: #4ac8ae;
+            font-weight: bold;
+        }
+
+        td:nth-child(2) {
+            color: #e0e0e0;
+            width: 150px;
+        }
+
+        td:nth-child(3) {
+            color: #e0e0e0;
+        }
+
+        td:nth-child(4) {
+            color: #a0a0a0;
+        }
+
+        .guide {
+            margin-top: 40px;
+            padding: 20px;
+            background: #1a1a2e;
+            border: 1px solid #4ac8ae;
+            border-radius: 8px;
+        }
+
+        .guide h3 {
+            color: #4ac8ae;
+            margin-bottom: 15px;
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .guide-item {
+            padding: 15px;
+            background: rgba(74, 200, 174, 0.1);
+            border-left: 3px solid #4ac8ae;
+            border-radius: 4px;
+        }
+
+        .guide-label {
+            font-weight: bold;
+            color: #4ac8ae;
+            margin-bottom: 5px;
+        }
+
+        .guide-desc {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #4ac8ae;
+            color: #808080;
+            font-size: 0.85rem;
+        }
+
+        .tab-description {
+            color: #a0a0a0;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+    </style>
+    <script>
+        function switchTab(tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+            
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(b => b.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>pCloud Backup - Timing Diagrams (All Scenarios)</h1>
+            <div class="subtitle">Interactive Timeline Visualizations</div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('GREEN')">GREEN: Success</button>
+            <button class="tab-button" onclick="switchTab('YELLOW')">YELLOW: Warning</button>
+            <button class="tab-button" onclick="switchTab('RED')">RED: Critical</button>
+            <button class="tab-button" onclick="switchTab('NO_CHANGES')">NO_CHANGES: Optimized</button>
+        </div>
+
+        <!-- GREEN Scenario -->
+        <div id="tab-GREEN" class="tab-content active">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <div class="status-badge" style="background: #4caf5022; border: 2px solid #4caf50; color: #4caf50;">
+                    GREEN - Full Pipeline Success
+                </div>
+                <div class="tab-description">Safety-Gate passes (GREEN), changes detected, full backup cycle runs</div>
+            </div>
+
+            <div class="diagram-wrapper">
+                <svg width="1200" height="590" class="timeline-svg">
+                    <rect width="1200" height="590" fill="#0f0f1e"/>
+                    <line x1="150" y1="40" x2="150" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="150" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:00</text>
+                    <line x1="275" y1="40" x2="275" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="275" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:21</text>
+                    <line x1="400" y1="40" x2="400" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="400" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:42</text>
+                    <line x1="525" y1="40" x2="525" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="525" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">01:03</text>
+                    <line x1="650" y1="40" x2="650" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="650" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">02:05</text>
+                    <line x1="775" y1="40" x2="775" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="775" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">02:26</text>
+                    <line x1="900" y1="40" x2="900" y2="590" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="900" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">02:47</text>
+                    
+                    <rect x="0" y="60" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="60" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="95" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Systemd Timer</text>
+                    <line x1="150" y1="95" x2="1200" y2="95" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="155" cy="95" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <rect x="95" y="50" width="120" height="25" rx="3" fill="#1a1a2e" stroke="#4ac8ae" stroke-width="1.5"/>
+                    <text x="155" y="62" text-anchor="middle" font-size="10" fill="#4ac8ae" dominant-baseline="middle" font-weight="bold">Timer Fires</text>
+                    
+                    <rect x="0" y="130" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="130" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="165" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">RTB Wrapper</text>
+                    <line x1="150" y1="165" x2="1200" y2="165" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="156" cy="165" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="1055" cy="165" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="200" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="200" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="235" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Safety-Gate</text>
+                    <line x1="150" y1="235" x2="1200" y2="235" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="157" cy="235" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="165" cy="235" r="6" fill="#4caf50" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="270" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="270" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="305" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">rsync_tmbackup</text>
+                    <line x1="150" y1="305" x2="1200" y2="305" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="167" cy="305" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="169" cy="305" r="6" fill="#4caf50" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="340" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="340" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="375" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Manifest</text>
+                    <line x1="150" y1="375" x2="1200" y2="375" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="765" cy="375" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="410" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="410" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="445" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">pCloud Upload</text>
+                    <line x1="150" y1="445" x2="1200" y2="445" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="840" cy="445" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="1050" cy="445" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="480" width="1200" height="70" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="480" width="150" height="70" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="515" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">MariaDB</text>
+                    <line x1="150" y1="515" x2="1200" y2="515" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="1055" cy="515" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="1060" cy="515" r="6" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                </svg>
+            </div>
+
+            <div class="legend">
+                <h3>Timeline Events</h3>
+                <table>
+                    <tr><td>02:00:00</td><td>Systemd Timer</td><td>Timer Fires</td><td>Scheduled at 02:00 AM</td></tr>
+                    <tr><td>02:00:01</td><td>RTB Wrapper</td><td>Lock Acquired</td><td>/run/backup_pipeline.lock</td></tr>
+                    <tr><td>02:00:02</td><td>Safety-Gate</td><td>Check Status</td><td>Query entropy analysis</td></tr>
+                    <tr><td>02:00:05</td><td>Safety-Gate</td><td>GREEN PASS</td><td>Entropy within limits</td></tr>
+                    <tr><td>02:00:06</td><td>rsync_tmbackup</td><td>DRY-RUN</td><td>Check for changes</td></tr>
+                    <tr><td>02:00:07</td><td>rsync_tmbackup</td><td>Changes Found</td><td>Differences detected</td></tr>
+                    <tr><td>02:20:00</td><td>rtb_wrapper.sh</td><td>RTB Complete</td><td>Snapshot saved</td></tr>
+                    <tr><td>02:22:00</td><td>Manifest</td><td>Manifest Gen</td><td>SHA256 hash index</td></tr>
+                    <tr><td>02:25:00</td><td>pCloud Upload</td><td>Upload Start</td><td>Content deduplication</td></tr>
+                    <tr><td>02:35:00</td><td>pCloud Upload</td><td>Upload Done</td><td>Bandwidth saved via dedup</td></tr>
+                    <tr><td>02:35:01</td><td>MariaDB</td><td>Log Entry</td><td>Pipeline success logged</td></tr>
+                    <tr><td>02:35:02</td><td>RTB Wrapper</td><td>Lock Released</td><td>Pipeline complete</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- YELLOW Scenario -->
+        <div id="tab-YELLOW" class="tab-content">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <div class="status-badge" style="background: #ffc10722; border: 2px solid #ffc107; color: #ffc107;">
+                    YELLOW - Warning Detected
+                </div>
+                <div class="tab-description">Safety-Gate warns (YELLOW), behavior depends on SAFETY_GATE_STRICT</div>
+            </div>
+
+            <div class="diagram-wrapper">
+                <svg width="1200" height="290" class="timeline-svg">
+                    <rect width="1200" height="290" fill="#0f0f1e"/>
+                    <line x1="150" y1="40" x2="150" y2="290" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="150" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:00</text>
+                    <line x1="400" y1="40" x2="400" y2="290" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="400" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:04</text>
+                    
+                    <rect x="0" y="60" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="60" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="85" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Systemd Timer</text>
+                    <line x1="150" y1="85" x2="1200" y2="85" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="155" cy="85" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="110" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="110" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="135" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">RTB Wrapper</text>
+                    <line x1="150" y1="135" x2="1200" y2="135" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="156" cy="135" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="350" cy="135" r="5" fill="#ff5252" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="160" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="160" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="185" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Safety-Gate</text>
+                    <line x1="150" y1="185" x2="1200" y2="185" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="157" cy="185" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="250" cy="185" r="5" fill="#ffc107" stroke="white" stroke-width="1"/>
+                </svg>
+            </div>
+
+            <div class="legend">
+                <h3>Timeline Events</h3>
+                <table>
+                    <tr><td>02:00:00</td><td>Systemd Timer</td><td>Timer Fires</td><td>Scheduled at 02:00 AM</td></tr>
+                    <tr><td>02:00:01</td><td>RTB Wrapper</td><td>Lock Acquired</td><td>/run/backup_pipeline.lock</td></tr>
+                    <tr><td>02:00:02</td><td>Safety-Gate</td><td>Check Status</td><td>Query entropy analysis</td></tr>
+                    <tr><td>02:00:05</td><td>Safety-Gate</td><td>YELLOW Alert</td><td>Elevated entropy detected</td></tr>
+                    <tr><td>02:00:06</td><td>RTB Wrapper</td><td>Check STRICT Mode</td><td>SAFETY_GATE_STRICT enabled</td></tr>
+                    <tr><td>02:00:07</td><td>RTB Wrapper</td><td>Backup Blocked</td><td>YELLOW + STRICT = ABORT</td></tr>
+                    <tr><td>02:00:08</td><td>RTB Wrapper</td><td>Lock Released</td><td>Exit with code 1</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- RED Scenario -->
+        <div id="tab-RED" class="tab-content">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <div class="status-badge" style="background: #ff525222; border: 2px solid #ff5252; color: #ff5252;">
+                    RED - CRITICAL ALERT
+                </div>
+                <div class="tab-description">Safety-Gate detects ransomware or virus signature (RED), backup blocked immediately</div>
+            </div>
+
+            <div class="diagram-wrapper">
+                <svg width="1200" height="340" class="timeline-svg">
+                    <rect width="1200" height="340" fill="#0f0f1e"/>
+                    <line x1="150" y1="40" x2="150" y2="340" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="150" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:00</text>
+                    <line x1="400" y1="40" x2="400" y2="340" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="400" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:04</text>
+                    
+                    <rect x="0" y="60" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="60" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="85" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Systemd Timer</text>
+                    <line x1="150" y1="85" x2="1200" y2="85" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="155" cy="85" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="110" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="110" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="135" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">RTB Wrapper</text>
+                    <line x1="150" y1="135" x2="1200" y2="135" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="156" cy="135" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="350" cy="135" r="5" fill="#ff5252" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="160" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="160" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="185" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Safety-Gate</text>
+                    <line x1="150" y1="185" x2="1200" y2="185" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="157" cy="185" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="250" cy="185" r="5" fill="#ff5252" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="210" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="210" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="235" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">MariaDB</text>
+                    <line x1="150" y1="235" x2="1200" y2="235" stroke="#ff5252" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="350" cy="235" r="5" fill="#ff5252" stroke="white" stroke-width="1"/>
+                </svg>
+            </div>
+
+            <div class="legend">
+                <h3>Timeline Events</h3>
+                <table>
+                    <tr><td>02:00:00</td><td>Systemd Timer</td><td>Timer Fires</td><td>Scheduled at 02:00 AM</td></tr>
+                    <tr><td>02:00:01</td><td>RTB Wrapper</td><td>Lock Acquired</td><td>/run/backup_pipeline.lock</td></tr>
+                    <tr><td>02:00:02</td><td>Safety-Gate</td><td>Check Status</td><td>Query entropy & ClamAV signatures</td></tr>
+                    <tr><td>02:00:05</td><td>Safety-Gate</td><td>RED ALERT</td><td>Ransomware/virus signature detected</td></tr>
+                    <tr><td>02:00:06</td><td>RTB Wrapper</td><td>Backup Aborted</td><td>RED status = immediate abort</td></tr>
+                    <tr><td>02:00:07</td><td>RTB Wrapper</td><td>Lock Released</td><td>Exit with code 2 (CRITICAL)</td></tr>
+                    <tr><td>02:00:08</td><td>MariaDB</td><td>Alert Logged</td><td>Security incident recorded</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- NO_CHANGES Scenario -->
+        <div id="tab-NO_CHANGES" class="tab-content">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <div class="status-badge" style="background: #2196f322; border: 2px solid #2196f3; color: #2196f3;">
+                    NO CHANGES - Resources Saved
+                </div>
+                <div class="tab-description">Safety-Gate passes (GREEN), but rsync dry-run shows no changes</div>
+            </div>
+
+            <div class="diagram-wrapper">
+                <svg width="1200" height="290" class="timeline-svg">
+                    <rect width="1200" height="290" fill="#0f0f1e"/>
+                    <line x1="150" y1="40" x2="150" y2="290" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="150" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:00</text>
+                    <line x1="400" y1="40" x2="400" y2="290" stroke="#333" stroke-dasharray="3,3"/>
+                    <text x="400" y="30" text-anchor="middle" font-size="12" fill="#4ac8ae">00:01</text>
+                    
+                    <rect x="0" y="60" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="60" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="85" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Systemd Timer</text>
+                    <line x1="150" y1="85" x2="1200" y2="85" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="155" cy="85" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="110" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="110" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="135" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">RTB Wrapper</text>
+                    <line x1="150" y1="135" x2="1200" y2="135" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="156" cy="135" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="350" cy="135" r="5" fill="#2196f3" stroke="white" stroke-width="1"/>
+                    <circle cx="355" cy="135" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="160" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="160" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="185" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">Safety-Gate</text>
+                    <line x1="150" y1="185" x2="1200" y2="185" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="157" cy="185" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="165" cy="185" r="5" fill="#4caf50" stroke="white" stroke-width="1"/>
+                    
+                    <rect x="0" y="210" width="1200" height="50" fill="#1a1a2e" stroke="#333" stroke-width="1"/>
+                    <rect x="0" y="210" width="150" height="50" fill="rgba(74, 200, 174, 0.1)" stroke="#4ac8ae" stroke-width="2"/>
+                    <text x="75" y="235" text-anchor="middle" font-size="11" fill="#4ac8ae" dominant-baseline="middle">rsync_tmbackup</text>
+                    <line x1="150" y1="235" x2="1200" y2="235" stroke="#4ac8ae" stroke-width="1" stroke-dasharray="5,5"/>
+                    <circle cx="167" cy="235" r="5" fill="#4ac8ae" stroke="white" stroke-width="1"/>
+                    <circle cx="250" cy="235" r="5" fill="#ffc107" stroke="white" stroke-width="1"/>
+                </svg>
+            </div>
+
+            <div class="legend">
+                <h3>Timeline Events</h3>
+                <table>
+                    <tr><td>02:00:00</td><td>Systemd Timer</td><td>Timer Fires</td><td>Scheduled at 02:00 AM</td></tr>
+                    <tr><td>02:00:01</td><td>RTB Wrapper</td><td>Lock Acquired</td><td>/run/backup_pipeline.lock</td></tr>
+                    <tr><td>02:00:02</td><td>Safety-Gate</td><td>Check Status</td><td>Query entropy analysis</td></tr>
+                    <tr><td>02:00:05</td><td>Safety-Gate</td><td>GREEN PASS</td><td>Entropy within limits</td></tr>
+                    <tr><td>02:00:06</td><td>rsync_tmbackup</td><td>DRY-RUN</td><td>Check for changes</td></tr>
+                    <tr><td>02:00:07</td><td>rsync_tmbackup</td><td>No Changes</td><td>Files identical to latest snapshot</td></tr>
+                    <tr><td>02:00:08</td><td>RTB Wrapper</td><td>Skip Backup</td><td>NO_CHANGE_EXIT0=1</td></tr>
+                    <tr><td>02:00:09</td><td>RTB Wrapper</td><td>Lock Released</td><td>Exit with code 0 (saved resources)</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Scenario Guide -->
+        <div class="guide">
+            <h3>Scenario Guide</h3>
+            <div class="guide-grid">
+                <div class="guide-item">
+                    <div class="guide-label">GREEN: Successful Backup</div>
+                    <div class="guide-desc">Full backup pipeline executes: GREEN status + changes detected + RTB creates snapshot + pCloud uploads incremental data with deduplication (35 minutes total)</div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-label">YELLOW: Warning Status</div>
+                    <div class="guide-desc">Elevated entropy or ClamAV alert detected. If SAFETY_GATE_STRICT=1 (recommended), backup is blocked. Otherwise runs with caution (8 seconds)</div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-label">RED: Ransomware Alert</div>
+                    <div class="guide-desc">Ransomware/virus signature detected. Backup immediately aborted. Critical security incident logged to database (8 seconds)</div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-label">NO_CHANGES: Optimized</div>
+                    <div class="guide-desc">GREEN status but no file modifications since last snapshot. Backup skipped to save CPU, disk I/O, and bandwidth (9 seconds)</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Generated by pCloud Backup Timing Diagram Generator
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# /etc/systemd/system/entropywatcher-os.timer
+[Unit]
+Description=EntropyWatcher OS-Scan (daily, no overlap)
+
+[Timer]
+OnBootSec=5min
+OnCalendar=Mon..Sun 03:40
+Persistent=true
+RandomizedDelaySec=10m
+AccuracySec=5min
+Unit=entropywatcher-os.service
+
+[Install]
+WantedBy=timers.target

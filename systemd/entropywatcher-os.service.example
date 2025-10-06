@@ -1,0 +1,40 @@
+# /etc/systemd/system/entropywatcher-os.service *
+
+[Unit]
+Description=EntropyWatcher Scan (OS Pfade)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+SyslogIdentifier=ew-os-scan
+
+
+Type=oneshot
+User=<USER>
+Group=<GROUP>
+WorkingDirectory=/opt/apps/entropywatcher
+Environment=PYTHONNOUSERSITE=1
+
+# lade deine Projekt-.env zusätzlich zur python-dotenv (praktisch für Mail/Timerläufe)
+EnvironmentFile=/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=/opt/apps/entropywatcher/config/os.env
+
+# Logging-Datei (Ordner muss existieren & dem user gehören):
+#Environment=LOG_LEVEL=INFO
+#Environment=LOG_FILE=/var/log/entropywatcher/entropywatcher-os.log
+
+
+# IO/CPU freundlicher:
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+# (optional cgroups v2)
+# IOWeight=50
+# CPUWeight=10
+
+
+# Entropity OS (Betriebssystem) scannen:
+ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py scan --paths ${SCAN_PATHS}
+
+# Zeitlimit falls OS-Pfade mal „zäh“ sind
+TimeoutStartSec=1h
