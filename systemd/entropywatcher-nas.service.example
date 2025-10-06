@@ -1,0 +1,28 @@
+[Unit]
+Description=EntropyWatcher Scan (Delta)
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/srv/nas
+
+
+[Service]
+SyslogIdentifier=ew-nas-scan
+
+Type=oneshot
+User=<USER>
+Group=<GROUP>
+WorkingDirectory=/opt/apps/entropywatcher
+EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=-/opt/apps/entropywatcher/config/nas.env
+Environment=PYTHONNOUSERSITE=1
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+# optional (cgroups v2 / Debian 12):
+# IOWeight=50
+# CPUWeight=10
+
+
+ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py scan --paths "${SCAN_PATHS}"
+
+TimeoutStartSec=2h

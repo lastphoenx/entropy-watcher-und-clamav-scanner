@@ -1,0 +1,16 @@
+# /etc/systemd/system/entropywatcher-nas-av-weekly.timer
+[Unit]
+Description=EntropyWatcher NAS AV weekly fullscan (Sun)
+
+[Timer]
+OnCalendar=Sun 03:00
+Persistent=true
+RandomizedDelaySec=15m
+AccuracySec=1min
+# wichtig, Verbindung zum zu startenden Service
+Unit=entropywatcher-nas-av-weekly.service
+
+[Install]
+WantedBy=timers.target
+
+

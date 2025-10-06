@@ -1,0 +1,20 @@
+# /etc/systemd/system/backup-pipeline.service
+[Unit]
+Description=Backup Pipeline (RTB + pCloud)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=<USER>
+WorkingDirectory=/opt/apps/rtb
+ExecStart=/opt/apps/rtb/rtb_wrapper.sh
+StandardOutput=append:/var/log/backup/rtb_wrapper.log
+StandardError=append:/var/log/backup/rtb_wrapper.log
+
+# Resource limits (schonend für System)
+Nice=10
+IOSchedulingClass=idle
+CPUWeight=100
+IOWeight=50
+

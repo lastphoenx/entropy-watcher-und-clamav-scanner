@@ -1,0 +1,3398 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EntropyWatcher & pCloud Backup – Documentation</title>
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'strict'
+      });
+    </script>
+    <style>
+      :root {
+        --bg: #0a0e1a;
+        --bg-elevated: #0f1419;
+        --bg-card: #141920;
+        --border: #1e2530;
+        --border-focus: #2d3748;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --text-dim: #64748b;
+        --accent: #10b981;
+        --accent-hover: #34d399;
+        --accent-bg: rgba(16, 185, 129, 0.1);
+        --yellow: #fbbf24;
+        --red: #ef4444;
+        --nav-width: 240px;
+        --content-max: 900px;
+      }
+
+      /* Prism.js overrides for dark theme */
+      code[class*="language-"],
+      pre[class*="language-"] {
+        color: #e2e8f0;
+        background: transparent;
+        text-shadow: none;
+        font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .token.comment { color: #64748b; }
+      .token.string { color: #10b981; }
+      .token.keyword { color: #c084fc; }
+      .token.function { color: #60a5fa; }
+      .token.operator { color: #94a3b8; }
+      .token.punctuation { color: #94a3b8; }
+      .token.property { color: #fbbf24; }
+      .token.number { color: #f97316; }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Oxygen, Ubuntu, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        display: flex;
+      }
+
+      /* ===== SIDEBAR ===== */
+      .sidebar {
+        width: var(--nav-width);
+        background: var(--bg-elevated);
+        border-right: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 2rem 1rem;
+      }
+
+      .sidebar-header {
+        margin-bottom: 2rem;
+      }
+
+      .sidebar-logo {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 0.25rem;
+      }
+
+      .sidebar-subtitle {
+        font-size: 0.75rem;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .nav-section {
+        margin-bottom: 1.5rem;
+      }
+
+      .nav-section-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-dim);
+        margin-bottom: 0.5rem;
+        padding-left: 0.5rem;
+      }
+
+      .nav-list {
+        list-style: none;
+      }
+
+      .nav-link {
+        display: block;
+        padding: 0.5rem 0.75rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+        border-radius: 6px;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+      }
+
+      .nav-link:hover {
+        background: var(--bg-card);
+        color: var(--text);
+      }
+
+      .nav-link.active {
+        background: var(--accent-bg);
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      /* ===== MAIN CONTENT ===== */
+      .main {
+        flex: 1;
+        padding: 3rem 2rem;
+        max-width: calc(var(--content-max) + 4rem);
+        margin: 0 auto;
+      }
+
+      .hero {
+        margin-bottom: 3rem;
+      }
+
+      .hero-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.75rem;
+        background: linear-gradient(135deg, var(--text), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero-subtitle {
+        font-size: 1.125rem;
+        color: var(--text-muted);
+        max-width: 42rem;
+        line-height: 1.7;
+      }
+
+      .hero-badges {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.75rem;
+        color: var(--text-dim);
+      }
+
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+      }
+
+      /* ===== SECTIONS ===== */
+      section {
+        margin-bottom: 3rem;
+        scroll-margin-top: 1rem;
+        padding-top: 1rem;
+      }
+
+      .section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .section-meta {
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        margin-bottom: 1.25rem;
+      }
+
+      .section-content {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+      }
+
+      .section-content li {
+        margin-bottom: 0.5rem;
+      }
+
+      .code-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+      }
+
+      .code-label {
+        font-size: 0.75rem;
+      }
+
+      .copy-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .code-block {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 0 0 8px 8px;
+        padding: 1.25rem;
+        overflow-x: auto;
+      }
+
+      .code-wrapper:has(.code-header) .code-block {
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+      }
+
+      .code-wrapper:not(:has(.code-header)) .code-block {
+        border-radius: 8px;
+      }
+
+      pre {
+        margin: 0;
+        font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.875rem;
+        line-height: 1.7;
+        color: var(--text);
+        white-space: pre;
+        word-spacing: normal;
+        word-break: normal;
+        word-wrap: normal;
+        tab-size: 2;
+      }
+
+      code {
+        font-family: inherit;
+      }
+
+      /* Inline code */
+      .section-content code,
+      .hero-subtitle code {
+        padding: 0.15rem 0.4rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: var(--accent);
+      }
+
+      /* ===== FEATURE GRID ===== */
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.25rem;
+        margin: 1.5rem 0;
+      }
+
+      .feature-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem;
+        text-decoration: none;
+        display: block;
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+
+      .feature-card:hover {
+        border-color: var(--accent);
+        background: rgba(16, 185, 129, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+      }
+
+      .feature-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .feature-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+      }
+
+      .feature-desc {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      /* ===== STATUS INDICATORS ===== */
+      .status-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.75rem 0;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .status-dot.green {
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+      }
+
+      .status-dot.yellow {
+        background: var(--yellow);
+        box-shadow: 0 0 10px var(--yellow);
+      }
+
+      .status-dot.red {
+        background: var(--red);
+        box-shadow: 0 0 10px var(--red);
+      }
+
+      .status-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .status-desc {
+        color: var(--text-dim);
+        font-size: 0.85rem;
+      }
+
+      /* ===== TABLE ===== */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        font-size: 0.875rem;
+      }
+
+      th {
+        text-align: left;
+        padding: 0.75rem;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      td {
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      tr:hover {
+        background: var(--bg-card);
+      }
+
+      /* ===== RESPONSIVE ===== */
+      @media (max-width: 768px) {
+        body {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          height: auto;
+          position: static;
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .main {
+          padding: 2rem 1rem;
+        }
+
+        .hero-title {
+          font-size: 2rem;
+        }
+
+        .section-title {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">EntropyWatcher</div>
+        <div class="sidebar-subtitle">Backup Security Suite</div>
+      </div>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Getting Started</div>
+        <ul class="nav-list">
+          <li><a class="nav-link active" href="#home">Overview</a></li>
+          <li><a class="nav-link" href="#project-overview">🏗️ Project Overview</a></li>
+          <li><a class="nav-link" href="#features">Features</a></li>
+          <li><a class="nav-link" href="#architecture">Architecture</a></li>
+          <li><a class="nav-link" href="#quickstart">Quick Start</a></li>
+        </ul>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Configuration</div>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#config">Environment Setup</a></li>
+          <li><a class="nav-link" href="#examples">Usage Examples</a></li>
+        </ul>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Backup Integration</div>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#safety-gate">Safety Gate</a></li>
+          <li><a class="nav-link" href="#systemd">Systemd Setup</a></li>
+          <li><a class="nav-link" href="#pcloud">pCloud Tools</a></li>
+        </ul>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Security</div>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="HONEYFILE_SETUP.md" target="_blank">🍯 Honeyfile Detection</a></li>
+        </ul>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Operations</div>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#restore">Restore Guide</a></li>
+          <li><a class="nav-link" href="#sql">SQL Queries</a></li>
+          <li><a class="nav-link" href="TESTING.md" target="_blank">🧪 Testing Guide</a></li>
+        </ul>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">EntropyWatcher</div>
+        <ul class="nav-list">
+          <li><a href="#entropywatcher-helpers" class="nav-link">Helper Scripts &amp; venv</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="hero" id="home">
+        <h1 class="hero-title">EntropyWatcher & pCloud Backup</h1>
+        <p class="hero-subtitle">
+          Ransomware detection through entropy analysis and ClamAV integration,
+          with safety-gate protected backups to pCloud. This documentation
+          consolidates <code>README.md</code>, <code>SAFETY_GATE.md</code>,
+          <code>pcloud_restore.md</code>, and all related Markdown sources.
+        </p>
+        <div class="hero-badges">
+          <span class="badge">
+            <span class="badge-dot"></span>
+            Production Ready
+          </span>
+          <span class="badge">Python 3.11+</span>
+          <span class="badge">MariaDB Backend</span>
+          <span class="badge">Systemd Integration</span>
+        </div>
+      </header>
+
+      <!-- Project Overview Section -->
+      <section id="project-overview">
+        <h2 class="section-title">🏗️ Project Overview: Secure NAS & Backup Ecosystem</h2>
+        
+        <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--text);">📦 Repositories</h3>
+        <p>This project consists of several interconnected components:</p>
+        
+        <ul style="list-style: none; padding: 0; margin: 2rem 0;">
+          <li style="margin: 0.75rem 0; padding-left: 1.5rem; position: relative;">
+            <span style="position: absolute; left: 0;">🔒</span>
+            <strong><a href="https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner" target="_blank" style="color: var(--accent);">EntropyWatcher & ClamAV Scanner</a></strong> - Pre-Backup Security Gate with Intrusion Detection
+          </li>
+          <li style="margin: 0.75rem 0; padding-left: 1.5rem; position: relative;">
+            <span style="position: absolute; left: 0;">☁️</span>
+            <strong><a href="https://github.com/lastphoenx/pcloud-tools" target="_blank" style="color: var(--accent);">pCloud-Tools</a></strong> - Deduplicated Cloud Backups with JSON Manifests
+          </li>
+          <li style="margin: 0.75rem 0; padding-left: 1.5rem; position: relative;">
+            <span style="position: absolute; left: 0;">🔄</span>
+            <strong><a href="https://github.com/lastphoenx/rtb" target="_blank" style="color: var(--accent);">RTB Wrapper</a></strong> - Delta Detection for Rsync Time Backup
+          </li>
+          <li style="margin: 0.75rem 0; padding-left: 1.5rem; position: relative;">
+            <span style="position: absolute; left: 0;">💾</span>
+            <strong><a href="https://github.com/laurent22/rsync-time-backup" target="_blank" style="color: var(--accent);">Rsync Time Backup</a></strong> (Original) - Hardlink-based Local Backups
+          </li>
+        </ul>
+
+        <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--text);">🎯 The Origin Story</h3>
+        
+        <h4 style="font-size: 1.25rem; margin: 1.5rem 0 0.75rem; color: var(--text-muted);">From Proprietary NAS Systems to Debian</h4>
+        <p>
+          This journey began with frustration: <strong>QNAP</strong> (TS-453 Pro, TS-473A, TS-251+) and <strong>LaCie 5big NAS Pro</strong> 
+          worked fine for basic tasks, but the moment you wanted to do anything beyond standard features, it became a nightmare. 
+          Autostart scripts, limited shell environments, missing packages - you simply couldn't get where you wanted.
+        </p>
+        <p>
+          <strong>The Solution:</strong> Switching to a full-fledged <strong>Debian system</strong>. 
+          Hardware: <strong>Raspberry Pi 5</strong> with <strong>Radxa Penta SATA HAT</strong> (5x 2.5" SATA SSDs), 
+          Samba share with recycling bin. Full control, standard tools, no vendor lock-in.
+        </p>
+
+        <h4 style="font-size: 1.25rem; margin: 1.5rem 0 0.75rem; color: var(--text-muted);">The Path to Fully Automated Backup Pipeline</h4>
+        
+        <div style="margin: 2rem 0;">
+          <h5 style="font-size: 1.1rem; margin: 1rem 0 0.5rem; color: var(--accent);">1️⃣ RTB Wrapper - Delta-Driven Backups</h5>
+          <p>
+            <strong>Goal:</strong> Automated local backups with deduplication using standard Debian tools.
+          </p>
+          <p>
+            I chose <a href="https://github.com/laurent22/rsync-time-backup" target="_blank" style="color: var(--accent);">Rsync Time Backup</a> 
+            - a clever script that uses <code>rsync --hard-links</code> to create space-efficient snapshots. 
+            <strong>Problem:</strong> The script always ran, even when no changes existed.
+          </p>
+          <p>
+            <strong>Solution:</strong> The <a href="https://github.com/lastphoenx/rtb" target="_blank" style="color: var(--accent);">RTB Wrapper</a> 
+            checks beforehand if a delta exists (via <code>rsync --dry-run</code>). Backups only execute when actual changes are detected.
+          </p>
+        </div>
+
+        <div style="margin: 2rem 0;">
+          <h5 style="font-size: 1.1rem; margin: 1rem 0 0.5rem; color: var(--accent);">2️⃣ EntropyWatcher + ClamAV - Pre-Backup Security Gate</h5>
+          <p>
+            <strong>A realization:</strong> Backups of infected files are worthless. Worse - they spread malware into backup history and cloud storage.
+          </p>
+          <p>
+            <strong>Solution:</strong> <a href="https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner" target="_blank" style="color: var(--accent);">EntropyWatcher & ClamAV Scanner</a> 
+            analyzes <code>/srv/nas</code> (and optionally the OS) for:
+          </p>
+          <ul>
+            <li><strong>Entropy Anomalies</strong> (encrypted/compressed suspicious files)</li>
+            <li><strong>Malware Signatures</strong> (ClamAV)</li>
+            <li><strong>Safety Gate Mechanism:</strong> Backups only execute on green status</li>
+          </ul>
+          <p>Later expanded to cover the entire operating system (<code>/</code>, <code>/boot</code>, <code>/home</code>).</p>
+        </div>
+
+        <div style="margin: 2rem 0;">
+          <h5 style="font-size: 1.1rem; margin: 1rem 0 0.5rem; color: var(--accent);">3️⃣ Honeyfiles - Intrusion Detection with Decoys</h5>
+          <p>
+            The <strong>Shai-Hulud 2.0 npm worm</strong> demonstrated: Modern malware actively searches for credentials 
+            (<code>~/.aws/credentials</code>, <code>.git-credentials</code>, <code>.env</code> files).
+          </p>
+          <p>
+            <strong>Countermeasure:</strong> <strong>Honeyfiles</strong> - 7 randomly named decoy files, monitored by <strong>auditd</strong> at kernel level:
+          </p>
+          <ul>
+            <li><strong>Tier 1:</strong> Honeyfile access = immediate alert + backup blockade</li>
+            <li><strong>Tier 2:</strong> Honeyfile config access = suspicious</li>
+            <li><strong>Tier 3:</strong> auditd manipulation = critical alert</li>
+          </ul>
+        </div>
+
+        <div style="margin: 2rem 0;">
+          <h5 style="font-size: 1.1rem; margin: 1rem 0 0.5rem; color: var(--accent);">4️⃣ pCloud-Tools - Deduplicated Cloud Backups</h5>
+          <p>
+            With a functioning local backup and security pipeline, the question arose: <strong>How do I get this safely to the cloud?</strong>
+          </p>
+          <p>
+            <strong>Requirement:</strong> Deduplication like <code>rsync --hard-links</code> (inode principle), but <code>rclone</code> couldn't do it.
+          </p>
+          <p>
+            <strong>Solution:</strong> <a href="https://github.com/lastphoenx/pcloud-tools" target="_blank" style="color: var(--accent);">pCloud-Tools</a> 
+            with <strong>JSON Manifest Architecture</strong>:
+          </p>
+          <ul>
+            <li><strong>JSON-Stub System:</strong> Each backup stores only metadata + references to actual files</li>
+            <li><strong>Content-based Deduplication:</strong> Same SHA256 hash = same file = no upload</li>
+            <li><strong>Restore Function:</strong> Reconstructs complete backups from manifests + file pool</li>
+          </ul>
+        </div>
+
+        <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--text);">🔗 Component Interaction</h3>
+        <div class="code-wrapper">
+          <div class="code-block">
+            <pre><code>┌─────────────────────────────────────────────────────────────┐
+│  1. EntropyWatcher + ClamAV (Safety Gate)                   │
+│     ↓ GREEN = Safe | YELLOW = Warning | RED = STOP          │
+└─────────────────────────────────────────────────────────────┘
+                            ↓ (only on GREEN)
+┌─────────────────────────────────────────────────────────────┐
+│  2. RTB Wrapper checks: Any changes detected?               │
+│     ↓ YES = Delta found | NO = Skip backup                  │
+└─────────────────────────────────────────────────────────────┘
+                            ↓ (only with delta)
+┌─────────────────────────────────────────────────────────────┐
+│  3. Rsync Time Backup (local snapshots with hard links)     │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  4. pCloud-Tools (deduplicated cloud upload)                │
+└─────────────────────────────────────────────────────────────┘
+
+       [Honeyfiles monitor the entire system in parallel]</code></pre>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--text);">🛠️ Technology Stack</h3>
+        <ul style="column-count: 2; column-gap: 2rem;">
+          <li><strong>OS:</strong> Debian Bookworm (Raspberry Pi 5)</li>
+          <li><strong>Storage:</strong> 5x 2.5" SATA SSD (Radxa Penta SATA HAT)</li>
+          <li><strong>File Sharing:</strong> Samba with Recycling Bin</li>
+          <li><strong>Security:</strong> auditd, ClamAV, Python-based Entropy Analysis</li>
+          <li><strong>Backup:</strong> rsync, JSON Manifests, pCloud API</li>
+          <li><strong>Automation:</strong> Bash, systemd timers, Git Workflow</li>
+        </ul>
+      </section>
+
+      <!-- Features -->
+      <section id="features">
+        <h2 class="section-title">🎯 Core Features</h2>
+        <p class="section-meta">Source: <a href="../README.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>README.md</code></a></p>
+
+        <div class="feature-grid">
+          <a class="feature-card" href="#quickstart">
+            <div class="feature-icon">🚀</div>
+            <div class="feature-title">Quick Start</div>
+            <div class="feature-desc">
+              Get started with installation, database setup, and your first
+              entropy scan. Includes virtual environment setup and systemd
+              service configuration.
+            </div>
+          </a>
+
+          <a class="feature-card" href="#config">
+            <div class="feature-icon">🦠</div>
+            <div class="feature-title">ClamAV Integration</div>
+            <div class="feature-desc">
+              Signature-based malware detection with automated quarantine.
+              Multi-threaded clamdscan for daily hot-path and weekly full scans.
+            </div>
+          </a>
+
+          <a class="feature-card" href="#safety-gate">
+            <div class="feature-icon">🛡️</div>
+            <div class="feature-title">Safety Gate</div>
+            <div class="feature-desc">
+              GREEN/YELLOW/RED health status blocks backups during threats.
+              Multi-service gating for RTB, Borg, and rsync with configurable
+              aging windows.
+            </div>
+          </a>
+
+          <a class="feature-card" href="#sql">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">SQL Queries</div>
+            <div class="feature-desc">
+              Ready-to-use database queries for scan history, AV events, flagged
+              files, and health monitoring. Includes per-source dashboards and
+              maintenance queries.
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <!-- Architecture Overview -->
+      <section id="architecture">
+        <h2 class="section-title">🏗️ Architecture Overview</h2>
+        <p class="section-meta">Understanding the complete system flow</p>
+
+        <div class="section-content">
+          <p>
+            EntropyWatcher integrates with your backup pipeline to provide
+            multi-layered ransomware protection before data reaches pCloud.
+          </p>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          🎯 High-Level Component Architecture
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1.5rem 0;">
+          <iframe src="./architecture.html" style="width: 100%; height: 750px; border: none; border-radius: 8px; background: #0a0e1a;"></iframe>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          System Architecture (Logical Flow)
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1.5rem 0;">
+          <svg width="100%" viewBox="0 0 950 670" style="max-width: 950px; margin: 0 auto; display: block;">
+            <defs>
+              <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+              </marker>
+              <marker id="arrow-yellow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#eab308" />
+              </marker>
+              <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+              </marker>
+              <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#dc2626" />
+              </marker>
+            </defs>
+
+            <!-- Top: Data Sources -->
+            <text x="475" y="30" text-anchor="middle" fill="#94a3b8" font-size="14" font-weight="600">DATA SOURCES</text>
+            <rect x="175" y="45" width="600" height="60" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="295" y="72" text-anchor="middle" fill="#e2e8f0" font-size="12">📁 /srv/nas</text>
+            <text x="295" y="90" text-anchor="middle" fill="#94a3b8" font-size="10">(User1, User2, User3)</text>
+            <text x="475" y="72" text-anchor="middle" fill="#e2e8f0" font-size="12">💾 /home, /etc</text>
+            <text x="475" y="90" text-anchor="middle" fill="#94a3b8" font-size="10">(OS critical paths)</text>
+            <text x="655" y="72" text-anchor="middle" fill="#dc2626" font-size="12">⚠️ Threats</text>
+            <text x="655" y="90" text-anchor="middle" fill="#dc2626" font-size="10">(Ransomware, malware)</text>
+
+            <!-- Arrow down to scanning -->
+            <line x1="475" y1="105" x2="475" y2="150" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrow-blue)"/>
+            <text x="515" y="130" fill="#3b82f6" font-size="11" font-weight="500">continuous monitoring</text>
+
+            <!-- Scanning Layer -->
+            <text x="475" y="175" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="700">DETECTION LAYER</text>
+            <rect x="225" y="190" width="500" height="100" fill="#0f172a" stroke="#3b82f6" stroke-width="3" rx="8"/>
+            
+            <rect x="245" y="210" width="200" height="60" fill="#1e293b" stroke="#3b82f6" stroke-width="2" rx="6"/>
+            <text x="345" y="233" text-anchor="middle" fill="#3b82f6" font-size="13" font-weight="600">🔬 Entropy Scanner</text>
+            <text x="345" y="251" text-anchor="middle" fill="#94a3b8" font-size="10">Shannon entropy > 7.8</text>
+            <text x="345" y="265" text-anchor="middle" fill="#94a3b8" font-size="10">Jump detection: Δ > 1.0</text>
+
+            <rect x="485" y="210" width="220" height="60" fill="#1e293b" stroke="#3b82f6" stroke-width="2" rx="6"/>
+            <text x="595" y="233" text-anchor="middle" fill="#3b82f6" font-size="13" font-weight="600">🦠 ClamAV Scanner</text>
+            <text x="595" y="251" text-anchor="middle" fill="#94a3b8" font-size="10">Signature-based detection</text>
+            <text x="595" y="265" text-anchor="middle" fill="#94a3b8" font-size="10">Quarantine on findings</text>
+
+            <!-- Arrows to Database -->
+            <line x1="345" y1="290" x2="415" y2="325" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+            <text x="305" y="315" fill="#3b82f6" font-size="10" font-weight="500">write results</text>
+            <line x1="595" y1="290" x2="535" y2="325" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+            <text x="595" y="315" fill="#3b82f6" font-size="10" font-weight="500">write findings</text>
+
+            <!-- Database -->
+            <rect x="355" y="335" width="240" height="90" fill="#0f172a" stroke="#3b82f6" stroke-width="3" rx="8"/>
+            <text x="475" y="365" text-anchor="middle" fill="#3b82f6" font-size="15" font-weight="700">🗄️ MariaDB</text>
+            <text x="475" y="385" text-anchor="middle" fill="#94a3b8" font-size="11">scan_summary</text>
+            <text x="475" y="402" text-anchor="middle" fill="#94a3b8" font-size="11">av_events, files</text>
+            <text x="475" y="418" text-anchor="middle" fill="#3b82f6" font-size="10">flagged=1, av_findings>0</text>
+
+            <!-- Arrow to Safety Gate -->
+            <line x1="475" y1="425" x2="475" y2="465" stroke="#eab308" stroke-width="3" marker-end="url(#arrow-yellow)"/>
+            <text x="515" y="447" fill="#eab308" font-size="11" font-weight="500">health query</text>
+
+            <!-- Safety Gate Decision -->
+            <rect x="305" y="475" width="340" height="110" fill="#0f172a" stroke="#eab308" stroke-width="3" rx="8"/>
+            <text x="475" y="505" text-anchor="middle" fill="#eab308" font-size="16" font-weight="700">🛡️ Safety Gate</text>
+            <text x="475" y="527" text-anchor="middle" fill="#94a3b8" font-size="11">Check: flagged > 0?</text>
+            <text x="475" y="544" text-anchor="middle" fill="#94a3b8" font-size="11">Check: av_findings > 0?</text>
+            <text x="475" y="561" text-anchor="middle" fill="#94a3b8" font-size="11">Check: last_scan recent?</text>
+            <text x="475" y="578" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">→ exit 0 (GREEN) / 1 (YELLOW) / 2 (RED)</text>
+
+            <!-- Decision paths -->
+            <!-- RED path -->
+            <line x1="305" y1="530" x2="165" y2="530" stroke="#dc2626" stroke-width="3" marker-end="url(#arrow-red)"/>
+            <rect x="55" y="500" width="100" height="60" fill="#7f1d1d" stroke="#dc2626" stroke-width="2" rx="6"/>
+            <text x="105" y="523" text-anchor="middle" fill="#fca5a5" font-size="13" font-weight="700">🛑 RED</text>
+            <text x="105" y="539" text-anchor="middle" fill="#fca5a5" font-size="10">exit 2</text>
+            <text x="105" y="553" text-anchor="middle" fill="#fca5a5" font-size="9">ABORT</text>
+
+            <!-- YELLOW path -->
+            <line x1="475" y1="585" x2="475" y2="625" stroke="#eab308" stroke-width="3" marker-end="url(#arrow-yellow)"/>
+            <rect x="400" y="630" width="150" height="40" fill="#78350f" stroke="#eab308" stroke-width="2" rx="6"/>
+            <text x="475" y="655" text-anchor="middle" fill="#fde047" font-size="12" font-weight="700">⚠️ YELLOW: BLOCK</text>
+
+            <!-- GREEN path -->
+            <line x1="645" y1="530" x2="765" y2="530" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"/>
+            <rect x="775" y="500" width="130" height="60" fill="#064e3b" stroke="#10b981" stroke-width="2" rx="6"/>
+            <text x="840" y="523" text-anchor="middle" fill="#6ee7b7" font-size="13" font-weight="700">✅ GREEN</text>
+            <text x="840" y="539" text-anchor="middle" fill="#6ee7b7" font-size="10">exit 0</text>
+            <text x="840" y="553" text-anchor="middle" fill="#6ee7b7" font-size="9">PROCEED</text>
+
+            <!-- Arrow to backup -->
+            <line x1="840" y1="560" x2="840" y2="595" stroke="#10b981" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+            <!-- Backup execution -->
+            <rect x="730" y="600" width="220" height="50" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="6"/>
+            <text x="840" y="623" text-anchor="middle" fill="#3b82f6" font-size="13" font-weight="600">📸 RTB Wrapper Starts</text>
+            <text x="840" y="641" text-anchor="middle" fill="#94a3b8" font-size="10">wrapper_pcloud_sync_1to1.sh</text>
+          </svg>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Complete Protection & Backup Flow
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1.5rem 0;">
+          <svg width="100%" viewBox="0 0 900 1350" style="max-width: 900px; margin: 0 auto; display: block;">
+            <defs>
+              <marker id="arrowhead-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#dc2626" />
+              </marker>
+              <marker id="arrowhead-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+              </marker>
+              <marker id="arrowhead-yellow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#eab308" />
+              </marker>
+              <marker id="arrowhead-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+              </marker>
+            </defs>
+            
+            <!-- Level 0: EntropyWatcher (Top) -->
+            <rect x="300" y="20" width="300" height="80" fill="#0f172a" stroke="#10b981" stroke-width="3" rx="8"/>
+            <text x="450" y="50" text-anchor="middle" fill="#10b981" font-size="18" font-weight="700">🔬 EntropyWatcher</text>
+            <text x="450" y="72" text-anchor="middle" fill="#94a3b8" font-size="12">Continuous Monitoring Service</text>
+            <text x="450" y="88" text-anchor="middle" fill="#10b981" font-size="10">systemd timer: hourly/daily scans</text>
+            
+            <!-- Arrow down to data sources -->
+            <line x1="450" y1="100" x2="450" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+            
+            <!-- Level 1: Data Sources -->
+            <rect x="100" y="150" width="700" height="100" fill="#1e293b" stroke="#475569" stroke-width="2" rx="8"/>
+            <text x="450" y="175" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="600">📁 Data Sources</text>
+            
+            <rect x="120" y="190" width="200" height="45" fill="#0f172a" stroke="#475569" stroke-width="1" rx="4"/>
+            <text x="220" y="210" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">NAS Files</text>
+            <text x="220" y="226" text-anchor="middle" fill="#94a3b8" font-size="10">/srv/nas/{User1,User2,User3}</text>
+            
+            <rect x="350" y="190" width="200" height="45" fill="#0f172a" stroke="#475569" stroke-width="1" rx="4"/>
+            <text x="450" y="210" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">OS Files</text>
+            <text x="450" y="226" text-anchor="middle" fill="#94a3b8" font-size="10">/home, /etc, /var</text>
+            
+            <rect x="580" y="190" width="200" height="45" fill="#0f172a" stroke="#475569" stroke-width="1" rx="4"/>
+            <text x="680" y="210" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">Ransomware Attack</text>
+            <text x="680" y="226" text-anchor="middle" fill="#dc2626" font-size="10">⚠️ Files encrypted</text>
+            
+            <!-- Arrows from sources to scanning -->
+            <line x1="220" y1="235" x2="350" y2="280" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+            <line x1="450" y1="235" x2="450" y2="280" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+            <line x1="680" y1="235" x2="550" y2="280" stroke="#dc2626" stroke-width="2" marker-end="url(#arrowhead-red)"/>
+            
+            <!-- Level 2: Dual Scanning -->
+            <rect x="250" y="290" width="400" height="120" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="8"/>
+            <text x="450" y="315" text-anchor="middle" fill="#10b981" font-size="16" font-weight="600">Dual-Layer Scanning</text>
+            
+            <rect x="270" y="330" width="160" height="60" fill="#1e293b" stroke="#10b981" stroke-width="1" rx="4"/>
+            <text x="350" y="352" text-anchor="middle" fill="#10b981" font-size="13" font-weight="500">Entropy Analysis</text>
+            <text x="350" y="368" text-anchor="middle" fill="#94a3b8" font-size="10">Shannon calculation</text>
+            <text x="350" y="382" text-anchor="middle" fill="#94a3b8" font-size="10">Threshold: 7.8 bits/byte</text>
+            
+            <rect x="470" y="330" width="160" height="60" fill="#1e293b" stroke="#10b981" stroke-width="1" rx="4"/>
+            <text x="550" y="352" text-anchor="middle" fill="#10b981" font-size="13" font-weight="500">ClamAV Scan</text>
+            <text x="550" y="368" text-anchor="middle" fill="#94a3b8" font-size="10">Signature detection</text>
+            <text x="550" y="382" text-anchor="middle" fill="#94a3b8" font-size="10">clamdscan (daemon)</text>
+            
+            <!-- Arrow to Actions -->
+            <line x1="450" y1="410" x2="450" y2="450" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+            
+            <!-- Level 3: Actions -->
+            <rect x="200" y="460" width="500" height="100" fill="#1e293b" stroke="#eab308" stroke-width="2" rx="8"/>
+            <text x="450" y="485" text-anchor="middle" fill="#eab308" font-size="16" font-weight="600">🔧 Automated Actions</text>
+            
+            <text x="250" y="515" fill="#e2e8f0" font-size="12">✓ Quarantine malicious files</text>
+            <text x="250" y="535" fill="#e2e8f0" font-size="12">✓ Write to MariaDB (scan_summary, files, av_events)</text>
+            <text x="250" y="555" fill="#e2e8f0" font-size="12">✓ Set flags: flagged=1, av_findings > 0</text>
+            
+            <!-- Arrow to Safety Gate -->
+            <line x1="450" y1="560" x2="450" y2="600" stroke="#eab308" stroke-width="3" marker-end="url(#arrowhead-yellow)"/>
+            
+            <!-- Level 4: Safety Gate Check -->
+            <rect x="250" y="610" width="400" height="130" fill="#0f172a" stroke="#eab308" stroke-width="3" rx="8"/>
+            <text x="450" y="635" text-anchor="middle" fill="#eab308" font-size="18" font-weight="700">🛡️ Safety-Gate Check</text>
+            <text x="450" y="653" text-anchor="middle" fill="#94a3b8" font-size="11">2-Stage Security Validation</text>
+            
+            <text x="450" y="673" text-anchor="middle" fill="#e2e8f0" font-size="11">1️⃣ Honeyfiles: Intrusion? → RED (fail-fast)</text>
+            <text x="450" y="690" text-anchor="middle" fill="#e2e8f0" font-size="11">2️⃣ EntropyWatcher (NAS + NAS-AV):</text>
+            <text x="450" y="705" text-anchor="middle" fill="#94a3b8" font-size="10">   flagged > MAX or av_findings > MAX? → RED</text>
+            <text x="450" y="720" text-anchor="middle" fill="#94a3b8" font-size="10">   scan_age < MIN? → YELLOW</text>
+            <text x="450" y="734" text-anchor="middle" fill="#94a3b8" font-size="10">   all OK? → GREEN</text>
+            
+            <!-- Decision paths -->
+            <!-- RED path (left) -->
+            <line x1="300" y1="740" x2="150" y2="790" stroke="#dc2626" stroke-width="3" marker-end="url(#arrowhead-red)"/>
+            <rect x="30" y="800" width="240" height="70" fill="#7f1d1d" stroke="#dc2626" stroke-width="2" rx="6"/>
+            <text x="150" y="825" text-anchor="middle" fill="#fca5a5" font-size="14" font-weight="700">🛑 RED: ABORT</text>
+            <text x="150" y="843" text-anchor="middle" fill="#fca5a5" font-size="11">Exit code: 2</text>
+            <text x="150" y="858" text-anchor="middle" fill="#fca5a5" font-size="10">Cleanly release lock, backup blocked</text>
+            
+            <!-- YELLOW path (middle) -->
+            <line x1="450" y1="740" x2="450" y2="790" stroke="#eab308" stroke-width="3" marker-end="url(#arrowhead-yellow)"/>
+            <rect x="330" y="800" width="240" height="70" fill="#78350f" stroke="#eab308" stroke-width="2" rx="6"/>
+            <text x="450" y="825" text-anchor="middle" fill="#fde047" font-size="14" font-weight="700">⚠️ YELLOW: BLOCK</text>
+            <text x="450" y="843" text-anchor="middle" fill="#fde047" font-size="11">Exit code: 1</text>
+            <text x="450" y="858" text-anchor="middle" fill="#fde047" font-size="10">Stale data, wait for fresh scan</text>
+            
+            <!-- GREEN path (right) -->
+            <line x1="600" y1="740" x2="750" y2="790" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+            <rect x="630" y="800" width="240" height="70" fill="#064e3b" stroke="#10b981" stroke-width="2" rx="6"/>
+            <text x="750" y="825" text-anchor="middle" fill="#6ee7b7" font-size="14" font-weight="700">✅ GREEN: PROCEED</text>
+            <text x="750" y="843" text-anchor="middle" fill="#6ee7b7" font-size="11">Exit code: 0</text>
+            <text x="750" y="858" text-anchor="middle" fill="#6ee7b7" font-size="10">Safe to backup</text>
+            
+            <!-- GREEN continuation to RTB Wrapper -->
+            <line x1="750" y1="870" x2="750" y2="920" stroke="#10b981" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+
+            <!-- Level 5: RTB Wrapper / Change detection -->
+            <rect x="520" y="930" width="360" height="110" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="8"/>
+            <text x="700" y="953" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="600">wrapper_pcloud_sync_1to1.sh</text>
+            <text x="700" y="971" text-anchor="middle" fill="#94a3b8" font-size="11">Check: lock file / already ran today?</text>
+            <text x="700" y="987" text-anchor="middle" fill="#94a3b8" font-size="11">Check: rsync --dry-run (NEW/CHANGED?)</text>
+            <text x="700" y="1005" text-anchor="middle" fill="#10b981" font-size="10">✓ Nur Snapshot + Upload wenn Änderungen &amp; GREEN</text>
+
+            <!-- No changes path: skip RTB + pCloud -->
+            <line x1="520" y1="985" x2="340" y2="985" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+            <text x="400" y="975" text-anchor="middle" fill="#10b981" font-size="10">keine Änderungen</text>
+
+            <rect x="20" y="950" width="320" height="70" fill="#022c22" stroke="#10b981" stroke-width="2" rx="6"/>
+            <text x="180" y="975" text-anchor="middle" fill="#bbf7d0" font-size="13" font-weight="600">⏭️ Skip RTB &amp; pCloud</text>
+            <text x="180" y="995" text-anchor="middle" fill="#bbf7d0" font-size="11">Cleanly release lock, no new snapshot, no upload</text>
+
+            <!-- Arrow to Local Snapshot when changes detected -->
+            <line x1="700" y1="1040" x2="390" y2="1075" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrowhead-blue)"/>
+
+            <!-- Level 6: Local Snapshot (RTB) -->
+            <rect x="200" y="1080" width="380" height="55" fill="#0b1220" stroke="#3b82f6" stroke-width="2" rx="6"/>
+            <text x="390" y="1105" text-anchor="middle" fill="#3b82f6" font-size="13" font-weight="600">📸 rsync-time-backup (RTB)</text>
+            <text x="390" y="1123" text-anchor="middle" fill="#94a3b8" font-size="10">Local snapshot (hardlinks + new files, nur bei Änderungen)</text>
+
+            <!-- Arrow to pCloud Intelligent Upload -->
+            <line x1="390" y1="1135" x2="390" y2="1195" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrowhead-blue)"/>
+
+            <!-- Level 7: Intelligent Upload to pCloud -->
+            <rect x="170" y="1200" width="440" height="90" fill="#020617" stroke="#3b82f6" stroke-width="2" rx="8"/>
+            <text x="390" y="1225" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="600">☁️ Intelligent Upload to pCloud</text>
+            <text x="390" y="1243" text-anchor="middle" fill="#94a3b8" font-size="11">pcloud_json_manifest.py + pcloud_push_json_manifest_to_pcloud.py</text>
+            <text x="390" y="1259" text-anchor="middle" fill="#10b981" font-size="10">Use content_index.json → stubs for existing hashes, upload NEW/CHANGED only</text>
+          </svg>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Backup Pipeline Flow (Step-by-Step)
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1.5rem 0;">
+          <div style="display: grid; gap: 1.5rem;">
+            <!-- Original step-by-step view -->
+            <!-- Step 1 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">1</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: var(--accent); font-size: 1rem;">DATA SOURCE</h4>
+                <code style="font-size: 0.85rem; color: var(--text-muted);">→ /srv/nas/User1, /srv/nas/User2, /srv/nas/User3</code>
+              </div>
+            </div>
+            
+            <!-- Step 2 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">2</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: var(--accent); font-size: 1rem;">SNAPSHOT CREATION (RTB)</h4>
+                <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                  → /mnt/backup/rtb_nas/2025-11-24-120000/ <span style="color: var(--text-dim);">(hardlinks + new files)</span><br>
+                  → /mnt/backup/rtb_nas/latest → 2025-11-24-120000
+                </code>
+              </div>
+            </div>
+            
+            <!-- Step 3 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">3</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: var(--accent); font-size: 1rem;">MANIFEST GENERATION</h4>
+                <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                  → pcloud_json_manifest.py<br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Scan snapshot directory tree</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Calculate SHA256 for each file</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">└─ Output: /tmp/manifest.json</span>
+                </code>
+              </div>
+            </div>
+            
+            <!-- Step 4 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #eab308, #ca8a04); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">4</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: #eab308; font-size: 1rem;">🛡️ SAFETY GATE CHECK (2-Stage Security)</h4>
+                <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                  → safety_gate.sh<br>
+                  <span style="color: #fbbf24; margin-left: 1rem; font-weight: 600;">1️⃣ Honeyfiles (Fail-Fast Pre-Check):</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ Check /var/lib/honeyfile_alert flag</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ Check auditd logs (file access intrusion?)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">└─ <span style="color: #dc2626;">ALARM → exit 2 (RED)</span></span><br>
+                  <span style="color: #10b981; margin-left: 1rem; font-weight: 600;">2️⃣ EntropyWatcher (NAS + NAS-AV):</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ Check entropy scans (no high-entropy files?)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ Check ClamAV findings (no viruses?)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ Check scan age (recent enough?)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">└─ Exit: <span style="color: #10b981;">0=GREEN</span>, <span style="color: #eab308;">1=YELLOW</span>, <span style="color: #dc2626;">2=RED</span></span>
+                </code>
+              </div>
+            </div>
+            
+            <!-- Step 5 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">5</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: var(--accent); font-size: 1rem;">INTELLIGENT UPLOAD</h4>
+                <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                  → pcloud_push_json_manifest_to_pcloud.py<br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Read manifest items</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Check content_index.json on pCloud</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ For each file:</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ If SHA256 exists: create stub (reference)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">└─ If new: upload file (full copy)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">└─ Update content_index.json</span>
+                </code>
+              </div>
+            </div>
+            
+            <!-- Step 6 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">6</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: #3b82f6; font-size: 1rem;">☁️ pCLOUD STORAGE</h4>
+                <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                  → /Backup/rtb_1to1/<br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ _snapshots/</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ 2025-11-23-120000/ <span style="color: #10b981;">(first backup - full)</span></span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">├─ 2025-11-24-120000/ <span style="color: #10b981;">(incremental - stubs + new)</span></span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">└─ _index/content_index.json <span style="color: #eab308;">(deduplication)</span></span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">└─ (future snapshots)</span>
+                </code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 2rem;">
+          <p>
+            <strong>Key Benefits:</strong>
+          </p>
+          <ul>
+            <li>✅ <strong>Immutable Snapshots:</strong> Files never overwritten</li>
+            <li>✅ <strong>Integrity Verification:</strong> SHA-256 validation post-upload</li>
+            <li>✅ <strong>Deduplication:</strong> Content-addressed storage saves space</li>
+            <li>✅ <strong>Safety-Gate Integration:</strong> Upload only when system is clean</li>
+          </ul>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Decision Tree – Wann läuft RTB/pCloud?
+        </h3>
+
+        <div class="diagram-container" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
+          <div class="mermaid">
+graph TD
+  Start["Systemd Timer triggert<br/>rtb_wrapper.sh"]
+  
+  LockCheck{"🔒 Lock verfügbar?"}
+  LockWait["⏳ Warten (max 2h)<br/>oder Skip"]
+  
+  SafeGate["🛡️ safety_gate.sh"]
+  HoneyCheck{"🍯 Honeyfiles<br/>OK?"}
+  EntropyCheck{"📊 Entropy<br/>(NAS + AV)"}
+  
+  SafeGreen["🟢 GREEN"]
+  SafeYellow["🟡 YELLOW<br/>(strict=1)"]
+  SafeRed["🔴 RED"]
+
+  DryRun{"🔍 rsync dry-run<br/>Änderungen?"}
+  Changes["✓ JA"]
+  NoChanges["✗ NEIN"]
+
+  RTBStart["▶️ RTB START<br/>rsync_tmbackup.sh"]
+  RTBSuccess{"RTB Exit<br/>Code = 0?"}
+
+  pCloudStart["▶️ pCloud-Sync START<br/>wrapper_pcloud_sync_1to1.sh"]
+
+  Preflight{"✅ pCloud Preflight<br/>(Quota, Auth)?"}
+  pCloudProcess["Manifest → Push<br/>→ Deduplication"]
+
+  Done["✅ FERTIG<br/>Lock released"]
+  Abort["❌ ABORT<br/>Lock released"]
+  Skip["⏭️ SKIP<br/>Lock released"]
+
+  Start --> LockCheck
+  LockCheck -->|JA| SafeGate
+  LockCheck -->|NEIN| LockWait --> Skip
+
+  SafeGate --> HoneyCheck
+  HoneyCheck -->|ALARM| SafeRed
+  HoneyCheck -->|OK| EntropyCheck
+  EntropyCheck -->|GREEN| SafeGreen
+  EntropyCheck -->|YELLOW| SafeYellow
+  EntropyCheck -->|RED| SafeRed
+
+  SafeGreen --> DryRun
+  SafeYellow --> Abort
+  SafeRed --> Abort
+
+  DryRun --> Changes
+  DryRun --> NoChanges
+
+  Changes --> RTBStart
+  NoChanges --> Skip
+
+  RTBStart --> RTBSuccess
+  RTBSuccess -->|JA| pCloudStart
+  RTBSuccess -->|NEIN| Abort
+
+  pCloudStart --> Preflight
+  Preflight -->|OK| pCloudProcess
+  Preflight -->|FAILED| Skip
+
+  pCloudProcess --> Done
+
+  style SafeGreen fill:#4caf50,color:#fff
+  style SafeYellow fill:#ff9800,color:#fff
+  style SafeRed fill:#d32f2f,color:#fff
+  style RTBStart fill:#2196f3,color:#fff
+  style pCloudStart fill:#2196f3,color:#fff
+  style Done fill:#4caf50,color:#fff
+  style Abort fill:#d32f2f,color:#fff
+  style Skip fill:#ff9800,color:#fff
+          </div>
+        </div>
+
+        <!-- Sequence Diagram Style -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Complete Backup Pipeline (Sequence Diagram)
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1.5rem 0;">
+          <svg width="100%" viewBox="0 0 1220 1420" style="max-width: 1200px; margin: 0 auto; display: block;">
+            <defs>
+              <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+              </marker>
+              <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#dc2626" />
+              </marker>
+              <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+              </marker>
+              <marker id="arrow-yellow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#eab308" />
+              </marker>
+            </defs>
+
+            <!-- Zeitachse links -->
+            <rect x="10" y="60" width="70" height="1330" fill="none" stroke="#22d3ee" stroke-width="2" rx="6"/>
+            <text x="45" y="40" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="700">TIME</text>
+
+            <!-- Zeitmarken (Beispiel-NAS) -->
+            <text x="45" y="120"  text-anchor="middle" fill="#94a3b8" font-size="10">00:00</text>
+            <text x="45" y="200"  text-anchor="middle" fill="#94a3b8" font-size="10">01:00</text>
+            <text x="45" y="260"  text-anchor="middle" fill="#94a3b8" font-size="10">01:30</text>
+            <text x="45" y="340"  text-anchor="middle" fill="#94a3b8" font-size="10">02:00</text>
+            <text x="45" y="420"  text-anchor="middle" fill="#94a3b8" font-size="10">02:05</text>
+            <text x="45" y="500"  text-anchor="middle" fill="#94a3b8" font-size="10">02:10</text>
+            <text x="45" y="580"  text-anchor="middle" fill="#94a3b8" font-size="10">02:15</text>
+            <text x="45" y="740"  text-anchor="middle" fill="#94a3b8" font-size="10">02:30</text>
+            <text x="45" y="900"  text-anchor="middle" fill="#94a3b8" font-size="10">02:45</text>
+            <text x="45" y="1060" text-anchor="middle" fill="#94a3b8" font-size="10">03:00</text>
+
+            <!-- Swimlane Headers -->
+            <rect x="90" y="10" width="180" height="50" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="180" y="40" text-anchor="middle" fill="#10b981" font-size="14" font-weight="700">Systemd Timer</text>
+
+            <rect x="290" y="10" width="180" height="50" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="380" y="40" text-anchor="middle" fill="#10b981" font-size="14" font-weight="700">EntropyWatcher</text>
+
+            <rect x="490" y="10" width="180" height="50" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="580" y="40" text-anchor="middle" fill="#10b981" font-size="14" font-weight="700">MariaDB</text>
+
+            <rect x="690" y="10" width="180" height="50" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="780" y="40" text-anchor="middle" fill="#eab308" font-size="14" font-weight="700">Safety Gate</text>
+
+            <rect x="890" y="10" width="180" height="50" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="980" y="40" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="700">RTB Wrapper</text>
+
+            <rect x="1080" y="10" width="140" height="50" fill="#1e293b" stroke="#475569" stroke-width="2" rx="6"/>
+            <text x="1150" y="40" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="700">pCloud</text>
+
+            <!-- Vertical Lifelines -->
+            <line x1="180" y1="60" x2="180" y2="1380" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="380" y1="60" x2="380" y2="1380" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="580" y1="60" x2="580" y2="1380" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="780" y1="60" x2="780" y2="1380" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="980" y1="60" x2="980" y2="1380" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
+            <line x1="1150" y1="60" x2="1150" y2="1380" stroke="#475569" stroke-width="2" stroke-dasharray="5,5"/>
+
+            <!-- Step 1: Timer triggers -->
+            <rect x="110" y="90" width="140" height="40" fill="#10b981" stroke="#059669" stroke-width="2" rx="4"/>
+            <text x="180" y="115" text-anchor="middle" fill="white" font-size="12" font-weight="600">⏰ Timer fires</text>
+            <line x1="250" y1="110" x2="300" y2="110" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="275" y="105" text-anchor="middle" fill="#10b981" font-size="10">trigger</text>
+
+            <!-- Step 2: Scan starts -->
+            <rect x="310" y="140" width="140" height="50" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="380" y="162" text-anchor="middle" fill="#10b981" font-size="12" font-weight="600">Entropy Scan</text>
+            <text x="380" y="178" text-anchor="middle" fill="#94a3b8" font-size="10">scan --paths /srv/nas</text>
+
+            <!-- Step 3: Files scanned -->
+            <rect x="310" y="210" width="140" height="50" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="380" y="232" text-anchor="middle" fill="#10b981" font-size="12" font-weight="600">ClamAV Scan</text>
+            <text x="380" y="248" text-anchor="middle" fill="#94a3b8" font-size="10">av-scan --paths /srv/nas</text>
+
+            <!-- Step 4: Write to DB -->
+            <line x1="450" y1="235" x2="500" y2="235" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="475" y="230" text-anchor="middle" fill="#10b981" font-size="10">INSERT</text>
+
+            <rect x="510" y="280" width="140" height="70" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="580" y="300" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">Write Results</text>
+            <text x="580" y="316" text-anchor="middle" fill="#94a3b8" font-size="9">scan_summary</text>
+            <text x="580" y="330" text-anchor="middle" fill="#94a3b8" font-size="9">av_events</text>
+            <text x="580" y="344" text-anchor="middle" fill="#94a3b8" font-size="9">flagged files</text>
+
+            <!-- Step 5: Backup timer triggers -->
+            <rect x="110" y="380" width="140" height="40" fill="#3b82f6" stroke="#2563eb" stroke-width="2" rx="4"/>
+            <text x="180" y="405" text-anchor="middle" fill="white" font-size="12" font-weight="600">⏰ Backup Timer</text>
+            <line x1="250" y1="400" x2="900" y2="400" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+            <text x="575" y="395" text-anchor="middle" fill="#3b82f6" font-size="10">trigger wrapper</text>
+
+            <!-- Step 6: Wrapper checks lock -->
+            <rect x="910" y="440" width="140" height="60" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="4"/>
+            <text x="980" y="462" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">Check Lock File</text>
+            <text x="980" y="478" text-anchor="middle" fill="#94a3b8" font-size="9">Already ran today?</text>
+            <text x="980" y="492" text-anchor="middle" fill="#10b981" font-size="9">✓ No → Proceed</text>
+
+            <!-- Step 7: Call safety gate -->
+            <line x1="910" y1="540" x2="860" y2="540" stroke="#eab308" stroke-width="2" marker-end="url(#arrow-yellow)"/>
+            <text x="885" y="535" text-anchor="middle" fill="#eab308" font-size="10">call</text>
+
+            <rect x="710" y="560" width="140" height="60" fill="#0f172a" stroke="#eab308" stroke-width="2" rx="4"/>
+            <text x="780" y="582" text-anchor="middle" fill="#eab308" font-size="11" font-weight="600">safety_gate.sh</text>
+            <text x="780" y="598" text-anchor="middle" fill="#94a3b8" font-size="9">Query health status</text>
+
+            <!-- Step 8: Query DB -->
+            <line x1="710" y1="590" x2="660" y2="590" stroke="#eab308" stroke-width="2" marker-end="url(#arrow-yellow)"/>
+            <text x="685" y="585" text-anchor="middle" fill="#eab308" font-size="10">SELECT</text>
+
+            <rect x="510" y="640" width="140" height="80" fill="#0f172a" stroke="#eab308" stroke-width="2" rx="4"/>
+            <text x="580" y="660" text-anchor="middle" fill="#eab308" font-size="11" font-weight="600">Health Query</text>
+            <text x="580" y="676" text-anchor="middle" fill="#94a3b8" font-size="9">flagged_count</text>
+            <text x="580" y="690" text-anchor="middle" fill="#94a3b8" font-size="9">av_findings</text>
+            <text x="580" y="704" text-anchor="middle" fill="#94a3b8" font-size="9">last_scan_age</text>
+
+            <!-- Step 9: Return health status -->
+            <line x1="650" y1="680" x2="710" y2="680" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="680" y="675" text-anchor="middle" fill="#10b981" font-size="10">results</text>
+
+            <rect x="710" y="750" width="140" height="60" fill="#064e3b" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="780" y="772" text-anchor="middle" fill="#6ee7b7" font-size="12" font-weight="700">✅ GREEN</text>
+            <text x="780" y="788" text-anchor="middle" fill="#6ee7b7" font-size="10">exit 0</text>
+            <text x="780" y="802" text-anchor="middle" fill="#94a3b8" font-size="9">Safe to backup</text>
+
+            <!-- Step 10: Return to wrapper -->
+            <line x1="850" y1="780" x2="910" y2="780" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="880" y="775" text-anchor="middle" fill="#10b981" font-size="10">exit 0</text>
+
+            <!-- Step 11: Create lock file -->
+            <rect x="910" y="830" width="140" height="40" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="4"/>
+            <text x="980" y="855" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">Create Lock File</text>
+
+            <!-- Step 12: RTB snapshot -->
+            <rect x="910" y="890" width="140" height="70" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="4"/>
+            <text x="980" y="910" text-anchor="middle" fill="#3b82f6" font-size="12" font-weight="600">RTB Snapshot</text>
+            <text x="980" y="926" text-anchor="middle" fill="#94a3b8" font-size="9">rsync_tmbackup.sh</text>
+            <text x="980" y="940" text-anchor="middle" fill="#94a3b8" font-size="9">/srv/nas → /mnt/backup</text>
+            <text x="980" y="954" text-anchor="middle" fill="#10b981" font-size="9">hardlinks + new files</text>
+
+            <!-- Step 13: Generate manifest -->
+            <rect x="910" y="980" width="140" height="60" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="4"/>
+            <text x="980" y="1002" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">Generate Manifest</text>
+            <text x="980" y="1018" text-anchor="middle" fill="#94a3b8" font-size="9">pcloud_json_manifest.py</text>
+            <text x="980" y="1032" text-anchor="middle" fill="#10b981" font-size="9">SHA256 checksums</text>
+
+            <!-- Step 14: Check safety gate again -->
+            <line x1="910" y1="1060" x2="860" y2="1060" stroke="#eab308" stroke-width="2" marker-end="url(#arrow-yellow)"/>
+            <text x="885" y="1055" text-anchor="middle" fill="#eab308" font-size="10">re-check</text>
+
+            <rect x="710" y="1080" width="140" height="50" fill="#064e3b" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="780" y="1102" text-anchor="middle" fill="#6ee7b7" font-size="12" font-weight="700">✅ Still GREEN</text>
+            <text x="780" y="1118" text-anchor="middle" fill="#6ee7b7" font-size="10">exit 0</text>
+
+            <line x1="850" y1="1105" x2="910" y2="1105" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+            <!-- Step 15: Upload to pCloud -->
+            <line x1="1020" y1="1150" x2="1070" y2="1150" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+            <text x="1045" y="1145" text-anchor="middle" fill="#3b82f6" font-size="10">upload</text>
+
+            <rect x="1070" y="1170" width="140" height="80" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="4"/>
+            <text x="1140" y="1190" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">Intelligent Upload</text>
+            <text x="1140" y="1206" text-anchor="middle" fill="#94a3b8" font-size="9">Check content_index.json</text>
+            <text x="1140" y="1220" text-anchor="middle" fill="#10b981" font-size="9">Stub if SHA256 exists</text>
+            <text x="1140" y="1234" text-anchor="middle" fill="#10b981" font-size="9">Full upload if new</text>
+
+            <!-- Step 16: Verify integrity -->
+            <rect x="910" y="1270" width="140" height="50" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="980" y="1292" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">Verify Integrity</text>
+            <text x="980" y="1308" text-anchor="middle" fill="#94a3b8" font-size="9">pcloud_integrity_check.py</text>
+
+            <line x1="1050" y1="1295" x2="1100" y2="1295" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
+            <text x="1075" y="1290" text-anchor="middle" fill="#10b981" font-size="10">verify SHA256</text>
+
+            <!-- Step 17: Remove lock -->
+            <rect x="910" y="1330" width="140" height="40" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="4"/>
+            <text x="980" y="1355" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">✅ Remove Lock File</text>
+
+            <!-- RED/YELLOW alternative path (backup aborted) -->
+            <rect x="710" y="850" width="140" height="60" fill="#7f1d1d" stroke="#dc2626" stroke-width="2" rx="4"/>
+            <text x="780" y="872" text-anchor="middle" fill="#fca5a5" font-size="12" font-weight="700">🛑 RED/YELLOW</text>
+            <text x="780" y="888" text-anchor="middle" fill="#fca5a5" font-size="10">exit 1/2</text>
+            <text x="780" y="902" text-anchor="middle" fill="#fca5a5" font-size="9">Backup aborted</text>
+
+            <line x1="850" y1="880" x2="910" y2="880" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrow-red)"/>
+            <text x="880" y="875" text-anchor="middle" fill="#dc2626" font-size="10">abort</text>
+          </svg>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Zeitplan (am Beispiel NAS)
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+              <tr style="background: #020617;">
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Zeit</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Timer-Name</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Skript / Service</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Aktion</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Dauer</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Status (Beispiel)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">00:00</td>
+                <td style="padding: 0.5rem 0.8rem;">rtb_nas.timer</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>rsync_tmbackup.sh</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Snapshot-Erstellung mit Hardlinks</td>
+                <td style="padding: 0.5rem 0.8rem;">~60 min</td>
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">01:00</td>
+                <td style="padding: 0.5rem 0.8rem;">—</td>
+                <td style="padding: 0.5rem 0.8rem;">RTB Snapshot fertig</td>
+                <td style="padding: 0.5rem 0.8rem;">Snapshot bereit für Upload</td>
+                <td style="padding: 0.5rem 0.8rem;">—</td>
+                <td style="padding: 0.5rem 0.8rem; color: #22c55e;">OK</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">01:00</td>
+                <td style="padding: 0.5rem 0.8rem;">entropywatcher_nas.timer</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher.py</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Delta-Scan /srv/nas</td>
+                <td style="padding: 0.5rem 0.8rem;">~20 min</td>
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:00</td>
+                <td style="padding: 0.5rem 0.8rem;">safety_gate.timer</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>safety_gate.sh</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Status prüfen (GREEN/RED?)</td>
+                <td style="padding: 0.5rem 0.8rem;">~5 sec</td>
+                <td style="padding: 0.5rem 0.8rem; color: #22c55e;">OK</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:05</td>
+                <td style="padding: 0.5rem 0.8rem;">pcloud_manifest.timer</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>pcloud_json_manifest.py</code></td>
+                <td style="padding: 0.5rem 0.8rem;">SHA256 je Datei berechnen</td>
+                <td style="padding: 0.5rem 0.8rem;">~10 min</td>
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:15</td>
+                <td style="padding: 0.5rem 0.8rem;">pcloud_push.timer</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>pcloud_push_json_manifest...</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Upload nur NEW/CHANGED</td>
+                <td style="padding: 0.5rem 0.8rem;">~30–60 min</td>
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">03:00</td>
+                <td style="padding: 0.5rem 0.8rem;">backup_pipeline.timer</td>
+                <td style="padding: 0.5rem 0.8rem;">Backup-Pipeline</td>
+                <td style="padding: 0.5rem 0.8rem;">Fertig ✅</td>
+                <td style="padding: 0.5rem 0.8rem;">—</td>
+                <td style="padding: 0.5rem 0.8rem; color: #22c55e;">COMPLETE</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top: 1rem; padding: 0.9rem 1rem; border-radius: 6px; background: #022c22; color: #bbf7d0; font-size: 0.85rem;">
+            <strong>Ergebnis:</strong> Durch die Kombination aus lokalen RTB-Snapshots (rsync&nbsp;--hard-links)
+            und Manifest-basierter Deduplizierung in pCloud werden in der Cloud sehr ähnliche
+            Einsparungen erzielt wie lokal – es wird primär nur NEW/CHANGED hochgeladen.
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Start -->
+      <section id="quickstart">
+        <h2 class="section-title">🚀 Quick Start</h2>
+        <p class="section-meta">Source: <a href="../README.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>README.md</code></a></p>
+
+        <div class="section-content">
+          <p>
+            <strong>Prerequisites:</strong> Python 3.11+, MariaDB/MySQL, ClamAV
+            (optional), <code>ent</code> tool (optional)
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Installation</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Clone and setup virtual environment
+git clone https://github.com/yourusername/entropywatcher.git
+cd entropywatcher
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Setup MariaDB
+mysql -u root -p &lt;&lt; 'SQL'
+CREATE DATABASE entropywatcher;
+CREATE USER 'entropyuser'@'localhost' IDENTIFIED BY 'secure_password';
+GRANT ALL PRIVILEGES ON entropywatcher.* TO 'entropyuser'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+
+# Configure environment
+cp config/common.env.example config/common.env
+# Edit config/common.env with your DB credentials and scan paths</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Configuration -->
+      <section id="config">
+        <h2 class="section-title">⚙️ Configuration</h2>
+        <div class="section-content">
+          <p>
+            Create a dedicated <code>pcloud.env</code> for the backup service account:
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/opt/apps/pcloud-tools/config/pcloud.env</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># pCloud API configuration (dedicated backup account)
+PCLOUD_API_HOST=eapi.pcloud.com  # or api.pcloud.com (US)
+PCLOUD_API_PORT=443
+PCLOUD_TOKEN=your_access_token_here
+
+# Backup paths
+PCLOUD_REMOTE_BASE=/Backup/rtb_1to1
+LOCAL_SNAPSHOT_DIR=/mnt/backup/rtb_nas/latest
+
+# Deduplication (object-store mode)
+OBJECT_STORE_MODE=1              # 1=enable, 0=flat copy
+CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <p><strong>Getting an API token (recommended process):</strong></p>
+          <ol>
+            <li>Create (or ask your admin to create) a dedicated pCloud account used only for backups.</li>
+            <li>Ask your pCloud admin or pCloud support to issue an API token / app password for this account.</li>
+            <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_1to1</code>).</li>
+            <li>Store the received token in <code>PCLOUD_TOKEN</code> inside <code>pcloud.env</code> and keep the file readable only by the backup user (for example <code>chmod 600</code>).</li>
+          </ol>
+        </div>
+  scan</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Systemd Usage</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Service]
+EnvironmentFile=/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=/opt/apps/entropywatcher/config/nas.env
+ExecStart=/opt/apps/entropywatcher/venv/bin/python entropywatcher.py scan</code></pre>
+          </div>
+        </div>
+
+        <!-- Database Config -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Database Configuration
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Database Settings</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">DB_HOST=localhost      # MariaDB/MySQL hostname
+DB_PORT=3306           # Database port
+DB_NAME=entropywatcher # Database name
+DB_USER=entropyuser    # Database username
+DB_PASS=secure_pass    # Database password (chmod 600!)</code></pre>
+          </div>
+        </div>
+
+        <!-- Entropy Engine -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Entropy Engine
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Performance Settings</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">USE_ENT=1              # Use external 'ent' tool for large files
+ENT_THRESHOLD=2097152  # Switch to 'ent' above 2 MiB
+ENT_TIMEOUT=30         # Timeout for 'ent' subprocess (seconds)
+CHUNK_SIZE=4194304     # Read buffer size (4 MiB)
+WORKERS=3              # Parallel processes (CPU_cores - 1)</code></pre>
+          </div>
+        </div>
+
+        <!-- Detection Thresholds -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Detection Thresholds
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Entropy & AV Thresholds</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">ALERT_ENTROPY_ABS=7.8    # Flag files above 7.8 bits/byte
+ALERT_ENTROPY_JUMP=1.0   # Flag if entropy increases by 1.0+
+ALERT_SIZE_CHANGE_PCT=50 # Flag on 50%+ size change
+
+# ClamAV settings
+CLAMAV_ENABLE=1          # Enable ClamAV scanning
+CLAMAV_USE_CLAMD=1       # Use clamd daemon (faster)
+CLAMAV_TIMEOUT=300       # Per-file scan timeout (seconds)
+AV_QUARANTINE_ACTION=move # move|copy|chmod
+AV_QUARANTINE_DIR=/quarantine</code></pre>
+          </div>
+        </div>
+
+        <!-- Excludes -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Exclusion Patterns
+        </h3>
+
+        <div class="section-content">
+          <p>Exclude known-good paths and file types to reduce false positives:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Common Exclusions</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Path excludes (full scan skip)
+EXCLUDES=*/.git/objects/*,*/node_modules/*,*/__pycache__/*,\
+*/av-quarantine/*,/boot/*,*/.Spotlight-V100/*
+
+# Score excludes (skip entropy scoring for known formats)
+SCORE_EXCLUDES=*.jpg,*.png,*.mp4,*.mkv,*.iso,*.zip,*.gz,*.tar,\
+*.7z,*.rar,*.bz2,*.xz</code></pre>
+          </div>
+        </div>
+
+        <!-- Health Parameters -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Health Check Parameters
+        </h3>
+
+        <div class="section-content">
+          <p>Control Safety Gate behavior and backup gating logic:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Health Defaults</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">HEALTH_WINDOW_MIN=120       # Status recency window (minutes)
+HEALTH_AV_FINDINGS_MAX=0    # Max AV findings (0 = zero tolerance)
+HEALTH_FLAGGED_MAX=0        # Max flagged files (0 = zero tolerance)
+HEALTH_SAFEAGE_MIN=30       # Min minutes since last flagged file</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 2rem;">
+          <p>
+            For complete variable reference including logging, email alerts,
+            and advanced options, see
+            <a href="../CONFIGURATION.md" target="_blank" style="color: var(--accent); text-decoration: underline;"><code>CONFIGURATION.md</code></a>.
+          </p>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <p><strong>Wann gilt eine Datei als verdächtig?</strong></p>
+          <ul>
+            <li>
+              <strong>Entropie-basierte Flags:</strong> Eine Datei wird markiert,
+              wenn ihre Shannon-Entropie <code>ALERT_ENTROPY_ABS</code> (z.B.
+              7.8&nbsp;bits/byte) überschreitet oder der Sprung
+              <code>ALERT_ENTROPY_JUMP</code> gegenüber der letzten Version zu
+              groß ist.
+            </li>
+            <li>
+              <strong>Größenänderung:</strong> Große relative Änderungen
+              (&gt;=<code>ALERT_SIZE_CHANGE_PCT</code>) können zusätzlich als
+              Indikator dienen (z.B. stark geschrumpfte Office-Dateien durch
+              Verschlüsselung).
+            </li>
+            <li>
+              <strong>AV-Funde:</strong> Meldet ClamAV einen Treffer, wird der
+              Fund in <code>av_events</code> gespeichert und fließt in die
+              Health-Bewertung ein.
+            </li>
+            <li>
+              <strong>Excludes &amp; Whitelist:</strong> Pfade in
+              <code>EXCLUDES</code>, Dateitypen in
+              <code>SCORE_EXCLUDES</code> sowie explizit als "known good"
+              markierte Dateien werden von der Entropie-Bewertung
+              ausgenommen.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Examples -->
+      <section id="examples">
+        <h2 class="section-title">💡 Usage Examples</h2>
+        <p class="section-meta">Source: <a href="../EXAMPLES.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>EXAMPLES.md</code></a></p>
+
+        <div class="section-content">
+          <p>
+            Real-world deployment scenarios with complete configuration examples,
+            systemd services, and backup integration patterns.
+          </p>
+        </div>
+
+        <!-- CLI Basics -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Basic CLI Operations
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Common Commands</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Define alias for easier invocation
+EW="/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py"
+
+# 1. Run scan with specific ENV profile
+$EW --env /opt/apps/entropywatcher/config/nas.env scan
+
+# 2. Check health status (for backup gating)
+$EW --env /opt/apps/entropywatcher/config/common.env status --window-min 120
+# Exit 0=GREEN, 1=YELLOW, 2=RED
+
+# 3. Report suspicious files (last 24h)
+$EW --env /opt/apps/entropywatcher/config/common.env report --preset flagged --hours 24
+
+# 4. AV findings report
+$EW --env /opt/apps/entropywatcher/config/common.env report --preset av --hours 168
+
+# 5. Recent changes
+$EW --env /opt/apps/entropywatcher/config/common.env report --preset recent --hours 24
+
+# 6. Tag file as known-good
+$EW --env /opt/apps/entropywatcher/config/common.env tag-exempt \
+  --path /srv/nas/backup.tar.gz \
+  --reason "Compressed backup archive"</code></pre>
+          </div>
+        </div>
+
+        <!-- Example 1: Home NAS -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          🏠 Example 1: Home NAS Protection
+        </h3>
+
+        <div class="section-content">
+          <p>
+            <strong>Scenario:</strong> Raspberry Pi monitoring Samba shares with
+            hourly entropy scans, daily ClamAV scans, and safety-gate protected backups.
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">nas.env (Hourly Entropy Scan)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">SOURCE_LABEL=nas
+SCAN_PATHS=/srv/nas
+CLAMAV_ENABLE=0
+HEALTH_WINDOW_MIN=120  # 2 hours (hourly scans)
+LOG_FILE=/var/log/entropywatcher/nas.log</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">nas-av.env (Daily AV Scan)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">SOURCE_LABEL=nas-av
+SCAN_PATHS=/srv/nas/User1,/srv/nas/User2
+CLAMAV_ENABLE=1
+CLAMAV_USE_CLAMD=1
+HEALTH_WINDOW_MIN=1440  # 24 hours (daily scans)
+AV_QUARANTINE_DIR=/srv/nas/av-quarantine
+AV_QUARANTINE_ACTION=move
+LOG_FILE=/var/log/entropywatcher/nas-av.log</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Systemd Timer (Hourly)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini"># /etc/systemd/system/entropywatcher-nas.timer
+[Unit]
+Description=Hourly NAS Entropy Scan
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">RTB Backup Wrapper with Safety Gate</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">#!/bin/bash
+set -e
+
+SAFETY_GATE="/opt/apps/entropywatcher/main/safety_gate.sh"
+RTB="/opt/apps/rtb/rsync_tmbackup.sh"
+SRC="/srv/nas"
+DST="/mnt/backup/nas-backups"
+
+# Safety gate check
+if ! "$SAFETY_GATE"; then
+    logger -t backup "RTB blocked by EntropyWatcher safety gate"
+    exit 1
+fi
+
+# Run backup
+logger -t backup "Safety gate passed - starting RTB backup"
+"$RTB" "$SRC" "$DST" backup.marker
+logger -t backup "RTB backup completed successfully"</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 2rem;">
+          <p>
+            For complete deployment examples including OS monitoring, multi-source setups,
+            and advanced exclusion strategies, see
+            <a href="../EXAMPLES.md" target="_blank" style="color: var(--accent); text-decoration: underline;"><code>EXAMPLES.md</code></a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Safety Gate -->
+      <section id="safety-gate">
+        <h2 class="section-title">🛡️ Safety Gate</h2>
+        <p class="section-meta">Source: <a href="../SAFETY_GATE.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>SAFETY_GATE.md</code></a></p>
+
+        <div class="section-content">
+          <p>
+            The Safety Gate prevents backups from running when EntropyWatcher
+            detects suspicious activity. It aggregates health status from
+            multiple services and exposes a single exit code for backup
+            integration.
+          </p>
+
+          <div class="status-row">
+            <span class="status-dot green"></span>
+            <span class="status-label">GREEN (Exit 0)</span>
+            <span class="status-desc">
+              – All checks passed, backup proceeds
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-dot yellow"></span>
+            <span class="status-label">YELLOW (Exit 1)</span>
+            <span class="status-desc">
+              – Warnings (stale data), backup blocked
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-dot red"></span>
+            <span class="status-label">RED (Exit 2)</span>
+            <span class="status-desc">
+              – Critical threats detected, backup blocked
+            </span>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Wrapper Integration Example</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">#!/bin/bash
+# RTB / pCloud wrapper – call safety_gate.sh before backup
+
+# Check safety gate
+/opt/apps/pcloud-tools/entropywatcher_av-scan/safety_gate.sh
+rc=$?
+
+case "$rc" in
+  0)
+    echo "[SAFETY-GATE] GREEN – proceeding with backup"
+    ;;
+  1)
+    echo "[SAFETY-GATE] YELLOW – aborting backup (warnings)" >&2
+    exit 1
+    ;;
+  2)
+    echo "[SAFETY-GATE] RED – aborting backup (threats detected)" >&2
+    exit 2
+    ;;
+esac
+
+# Proceed with backup (RTB, Borg, pCloud sync, etc.)
+# ...</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content">
+          <p>
+            <strong>Monitored services:</strong> Only <code>nas</code> (hourly
+            entropy) and <code>nas-av</code> (daily ClamAV) are checked by
+            default. Weekly and OS services are excluded to avoid false-positive
+            backup blocks. See <code>SAFETY_GATE.md</code> for rationale and
+            customization.
+          </p>
+        </div>
+      </section>
+
+      <!-- Honeyfiles Security -->
+      <section id="honeyfiles">
+        <h2 class="section-title">🍯 Honeyfile Intrusion Detection</h2>
+        <p class="section-meta">Source: <a href="../docs/HONEYFILE_SETUP.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>HONEYFILE_SETUP.md</code></a></p>
+
+        <div class="section-content">
+          <p>
+            The Honeyfile Intrusion Detection System deploys decoy files throughout the system.
+            Any unauthorized access triggers an immediate alert and <strong>blocks all backups</strong>.
+            This provides fail-fast ransomware detection before compromised data reaches pCloud.
+          </p>
+        </div>
+
+        <!-- Architecture -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Detection Pipeline
+        </h3>
+
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
+          <div style="display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+              <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem;">
+                <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">1</div>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0 0 0.5rem; color: #10b981; font-size: 1rem;">🍯 HONEYFILES</h4>
+                  <code style="display: block; font-size: 0.85rem; color: var(--text-muted);">
+                    7 fake credential files<br>
+                    Randomized names on install<br>
+                    Stored in: /opt/.../config/honeyfile_paths
+                  </code>
+                </div>
+              </div>
+              <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem;">
+                <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">2</div>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0 0 0.5rem; color: #3b82f6; font-size: 1rem;">🔍 MULTI-TIER DETECTION</h4>
+                  <code style="display: block; font-size: 0.85rem; color: var(--text-muted);">
+                    Tier 1: Honeyfile Access<br>
+                    Tier 2: Config Read Detection<br>
+                    Tier 3: Audit Tampering Detection<br>
+                    (auditd rules für alle 3 Tiers)
+                  </code>
+                </div>
+              </div>
+              <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem;">
+                <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">3</div>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0 0 0.5rem; color: #f59e0b; font-size: 1rem;">⏱️ TIMER (5 MIN)</h4>
+                  <code style="display: block; font-size: 0.85rem; color: var(--text-muted);">
+                    honeyfile-monitor.timer<br>
+                    (all 5 minutes)
+                  </code>
+                </div>
+              </div>
+            </div>
+            <div style="flex: 1; min-width: 250px;">
+              <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem;">
+                <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #ef4444, #dc2626); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">4</div>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0 0 0.5rem; color: #ef4444; font-size: 1rem;">🚨 INTRUSION ALERT</h4>
+                  <code style="display: block; font-size: 0.85rem; color: var(--text-muted);">
+                    ⚠️ ZUGRIFF ERKANNT!<br>
+                    → /var/lib/honeyfile_alert<br>
+                    → Email versendet
+                  </code>
+                </div>
+              </div>
+              <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1.5rem;">
+                <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #7c3aed); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">5</div>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0 0 0.5rem; color: #8b5cf6; font-size: 1rem;">🛡️ SAFETY GATE</h4>
+                  <code style="display: block; font-size: 0.85rem; color: var(--text-muted);">
+                    if [ -f /var/lib/<br>
+                    honeyfile_alert ]<br>
+                    → exit 2 (RED)<br>
+                    → BACKUP BLOCKED!
+                  </code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Indicators -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Alert Status
+        </h3>
+
+        <div class="section-content">
+          <div class="status-row">
+            <span class="status-dot green"></span>
+            <span class="status-label">No Alert</span>
+            <span class="status-desc">
+              – No suspicious activity, backups proceed normally
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-dot red"></span>
+            <span class="status-label">Alert Active</span>
+            <span class="status-desc">
+              – Flag <code>/var/lib/honeyfile_alert</code> exists, <strong>ALL BACKUPS BLOCKED</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Installation -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Installation
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Setup Command</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Full setup: Honeyfiles + auditd + logrotate + systemd
+sudo bash /opt/apps/entropywatcher/tools/setup_honeyfiles.sh
+
+# Dry-run (no changes)
+sudo bash /opt/apps/entropywatcher/tools/setup_honeyfiles.sh --dry-run
+
+# Remove everything (keeps logs for forensics)
+sudo bash /opt/apps/entropywatcher/tools/setup_honeyfiles.sh --remove
+
+# Purge logs only
+sudo bash /opt/apps/entropywatcher/tools/setup_honeyfiles.sh --purge-logs</code></pre>
+          </div>
+        </div>
+
+        <!-- Testing -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Testing & Simulation
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Verify Audit Rules (Tier 1/2/3)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Show all loaded audit rules
+sudo auditctl -l
+
+# Filter honeyfile-related rules only
+sudo auditctl -l | grep -E "honeyfile|audit_tampering|audit_config"
+
+# View rules file directly
+sudo cat /etc/audit/rules.d/honeyfiles.rules</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Trigger Intrusion Alert (TEST ONLY)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Get list of honeyfile paths
+cat /opt/apps/entropywatcher/config/honeyfile_paths
+
+# Access ANY honeyfile to trigger alert (example)
+sudo cat /root/.aws/credentials_a7f3e_20251214
+
+# Check if monitoring detected it
+sudo /opt/apps/entropywatcher/main/honeyfile_monitor.sh
+
+# Verify alert flag is set
+ls -la /var/lib/honeyfile_alert
+
+# Check safety_gate status
+sudo bash safety_gate.sh
+echo $?  # Should be 2 (RED)</code></pre>
+          </div>
+        </div>
+
+        <!-- Alert Management -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Alert Management
+        </h3>
+
+        <div class="section-content">
+          <p>
+            <strong style="color: #ef4444;">⚠️ CRITICAL:</strong> The alert flag is <strong>PERSISTENT</strong> 
+            and only manually deleted by admin after investigation.
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Investigate & Reset Alert</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Step 1: Investigate the intrusion
+sudo ausearch -k honeyfile_access --start recent
+
+# Step 2: Review logs
+sudo tail -f /var/log/honeyfile_monitor.log
+
+# Step 3: Assess threat & fix system
+# (Your incident response procedures)
+
+# Step 4: Only after investigation - DELETE FLAG
+sudo rm /var/lib/honeyfile_alert
+
+# Step 5: Reset state tracking
+sudo rm /var/lib/honeyfile_last_alert_ts
+
+# Step 6: Verify monitoring works again
+sudo /opt/apps/entropywatcher/main/honeyfile_monitor.sh
+echo $?  # Should be 0 (OK)</code></pre>
+          </div>
+        </div>
+
+        <!-- Monitoring -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Monitoring & Logs
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Common Commands</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Check timer status
+sudo systemctl status honeyfile-monitor.timer
+
+# View next execution
+sudo systemctl list-timers honeyfile-monitor.timer
+
+# Follow logs in real-time
+sudo tail -f /var/log/honeyfile_monitor.log
+
+# Review all audit events
+sudo ausearch -k honeyfile_access --start recent | head -50
+
+# Show current alert status
+if [ -f /var/lib/honeyfile_alert ]; then
+    echo "🚨 ALERT ACTIVE!"
+else
+    echo "✓ No active alert"
+fi</code></pre>
+          </div>
+        </div>
+
+        <!-- Mail Config -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Email Alerts
+        </h3>
+
+        <div class="section-content">
+          <p>
+            Honeyfile alerts are sent via SMTP. Configure in 
+            <code>/opt/apps/entropywatcher/config/common.env</code>:
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">common.env Configuration</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Enable email alerts
+MAIL_ENABLE=1
+
+# SMTP Server
+MAIL_SMTP_HOST=mail.example.com
+MAIL_SMTP_PORT=587
+
+# Authentication
+MAIL_USER=admin@example.com
+MAIL_PASS=password123
+
+# Recipients
+MAIL_TO=security@example.com
+
+# TLS/STARTTLS
+MAIL_STARTTLS=1  # 1=TLS, 0=Plain</code></pre>
+          </div>
+        </div>
+
+        <!-- Reference Table -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Quick Reference
+        </h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Location</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Honeyfiles (7x)</td>
+              <td>/root/.aws, /root/.git, /srv/nas/, etc.</td>
+              <td>Intrusion decoys</td>
+            </tr>
+            <tr>
+              <td>auditd Rules</td>
+              <td>/etc/audit/rules.d/honeyfiles.rules</td>
+              <td>Monitor read access</td>
+            </tr>
+            <tr>
+              <td>logrotate</td>
+              <td>/etc/logrotate.d/honeyfile-monitor</td>
+              <td>Daily rotation (7d keep)</td>
+            </tr>
+            <tr>
+              <td>Service</td>
+              <td>/etc/systemd/system/honeyfile-monitor.service</td>
+              <td>Monitoring script</td>
+            </tr>
+            <tr>
+              <td>Timer</td>
+              <td>/etc/systemd/system/honeyfile-monitor.timer</td>
+              <td>5-minute intervals</td>
+            </tr>
+            <tr>
+              <td>Alert Flag</td>
+              <td>/var/lib/honeyfile_alert</td>
+              <td>Persistent alert state</td>
+            </tr>
+            <tr>
+              <td>Logs</td>
+              <td>/var/log/honeyfile_monitor.log</td>
+              <td>Monitoring history</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="section-content" style="margin-top: 2rem; padding: 1.25rem; background: var(--bg-card); border-left: 4px solid #ef4444; border-radius: 4px;">
+          <p style="margin: 0; color: #ef4444; font-weight: 600;">
+            ⚠️ Security Note: Alert flag is NEVER auto-deleted. 
+            Manual deletion by authorized admin only, after incident investigation.
+          </p>
+        </div>
+      </section>
+
+      <!-- Systemd -->
+      <section id="systemd">
+        <h2 class="section-title">⏰ Systemd Integration</h2>
+        <p class="section-meta">Source: <a href="../SYSTEMD_TIMERS.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>SYSTEMD_TIMERS.md</code></a></p>
+
+        <div class="section-content">
+          <p>
+            EntropyWatcher and the backup pipeline run as systemd services with
+            timer-based scheduling. Each source profile has its own service/timer pair.
+          </p>
+        </div>
+
+        <!-- Service Overview -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Service Schedule Overview
+        </h3>
+
+        <div class="section-content">
+          <p>
+            Each systemd unit consists of a <strong>.service</strong> (execution logic) 
+            and <strong>.timer</strong> (schedule). Place both files in 
+            <code>/etc/systemd/system/</code>.
+          </p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Service Pair</th>
+              <th>Type</th>
+              <th>Frequency</th>
+              <th>Time</th>
+              <th>Files</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>entropywatcher-nas</code></td>
+              <td>Entropy</td>
+              <td>Hourly</td>
+              <td>*:20</td>
+              <td>
+                <code>entropywatcher-nas.service</code><br>
+                <code>entropywatcher-nas.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>entropywatcher-nas-av</code></td>
+              <td>ClamAV</td>
+              <td>Daily (Mon-Sat)</td>
+              <td>02:00</td>
+              <td>
+                <code>entropywatcher-nas-av.service</code><br>
+                <code>entropywatcher-nas-av.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>entropywatcher-nas-av-weekly</code></td>
+              <td>ClamAV</td>
+              <td>Weekly (Sun)</td>
+              <td>03:00</td>
+              <td>
+                <code>entropywatcher-nas-av-weekly.service</code><br>
+                <code>entropywatcher-nas-av-weekly.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>entropywatcher-os</code></td>
+              <td>Entropy</td>
+              <td>Daily</td>
+              <td>03:40</td>
+              <td>
+                <code>entropywatcher-os.service</code><br>
+                <code>entropywatcher-os.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>entropywatcher-os-av</code></td>
+              <td>ClamAV</td>
+              <td>Daily (Mon-Sat)</td>
+              <td>04:00</td>
+              <td>
+                <code>entropywatcher-os-av.service</code><br>
+                <code>entropywatcher-os-av.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>entropywatcher-os-av-weekly</code></td>
+              <td>ClamAV</td>
+              <td>Weekly (Sun)</td>
+              <td>05:00</td>
+              <td>
+                <code>entropywatcher-os-av-weekly.service</code><br>
+                <code>entropywatcher-os-av-weekly.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>backup-pipeline</code></td>
+              <td>Backup</td>
+              <td>3x daily</td>
+              <td>04:00, 12:00, 20:00</td>
+              <td>
+                <code>backup-pipeline.service</code><br>
+                <code>backup-pipeline.timer</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>honeyfile-monitor</code></td>
+              <td>Security</td>
+              <td>Every 5 min</td>
+              <td>*:00, *:05, *:10, ...</td>
+              <td>
+                <code>honeyfile-monitor.service</code><br>
+                <code>honeyfile-monitor.timer</code>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- NAS Entropy Service -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          NAS Entropy Scan (Hourly)
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/etc/systemd/system/entropywatcher-nas.service</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Unit]
+Description=EntropyWatcher NAS Entropy Scan (Hourly)
+After=network.target mariadb.service
+
+[Service]
+Type=oneshot
+User=entropyuser
+WorkingDirectory=/opt/apps/entropywatcher
+EnvironmentFile=/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=/opt/apps/entropywatcher/config/nas.env
+ExecStart=/opt/apps/entropywatcher/venv/bin/python \
+  /opt/apps/entropywatcher/main/entropywatcher.py \
+  --env /opt/apps/entropywatcher/config/common.env \
+  --env /opt/apps/entropywatcher/config/nas.env \
+  scan --paths "${SCAN_PATHS}"
+StandardOutput=journal
+StandardError=journal</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/etc/systemd/system/entropywatcher-nas.timer</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Unit]
+Description=Run EntropyWatcher NAS scan hourly
+
+[Timer]
+# First run 5 min after boot
+OnBootSec=5min
+# Then every hour at :20
+OnCalendar=*-*-* *:20:00
+AccuracySec=1m
+# Catch up on missed runs
+Persistent=true
+# Random delay to avoid load spikes
+RandomizedDelaySec=5min
+Unit=entropywatcher-nas.service
+
+[Install]
+WantedBy=timers.target</code></pre>
+          </div>
+        </div>
+
+        <!-- NAS AV Service -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          NAS AV Scan (Daily)
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/etc/systemd/system/entropywatcher-nas-av.service</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Unit]
+Description=EntropyWatcher NAS AV Scan (Daily)
+After=network.target mariadb.service clamav-daemon.service
+
+[Service]
+Type=oneshot
+User=entropyuser
+WorkingDirectory=/opt/apps/entropywatcher
+EnvironmentFile=/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=/opt/apps/entropywatcher/config/nas-av.env
+ExecStart=/opt/apps/entropywatcher/venv/bin/python \
+  /opt/apps/entropywatcher/main/entropywatcher.py \
+  --env /opt/apps/entropywatcher/config/common.env \
+  --env /opt/apps/entropywatcher/config/nas-av.env \
+  av-scan --paths "${SCAN_PATHS}"
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=3600</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/etc/systemd/system/entropywatcher-nas-av.timer</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Unit]
+Description=EntropyWatcher NAS AV daily (Mon-Sat)
+
+[Timer]
+OnCalendar=Mon..Sat 02:00
+RandomizedDelaySec=10m
+AccuracySec=1m
+Persistent=true
+Unit=entropywatcher-nas-av.service
+
+[Install]
+WantedBy=timers.target</code></pre>
+          </div>
+        </div>
+
+        <!-- Activation -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Service Activation
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Enable and Start Timers</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Reload systemd configuration
+sudo systemctl daemon-reload
+
+# Enable and start timers
+sudo systemctl enable --now entropywatcher-nas.timer
+sudo systemctl enable --now entropywatcher-nas-av.timer
+sudo systemctl enable --now backup-pipeline.timer
+
+# Check timer status
+systemctl list-timers
+
+# Manual test run
+sudo systemctl start entropywatcher-nas.service
+
+# View logs
+journalctl -u entropywatcher-nas -f</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 2rem;">
+          <p>
+            For complete service definitions including OS monitoring, weekly scans,
+            and backup pipeline integration, see
+            <a href="../SYSTEMD_TIMERS.md" target="_blank" style="color: var(--accent); text-decoration: underline;"><code>SYSTEMD_TIMERS.md</code></a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- pCloud Tools -->
+      <section id="pcloud">
+        <h2 class="section-title">☁️ pCloud Backup Tools</h2>
+        <p class="section-meta">
+          Detailed documentation: <a href="pcloud.html" style="color: var(--accent); text-decoration: underline;">pCloud Backup Tools Overview</a>
+          (HTML version of <code>PCLOUD_BACKUP_TOOLS_README.md</code>, <code>PCLOUD_TOOLS_README.md</code>, and <code>docs_ARCHITECTURE_pcloud.md</code>)
+        </p>
+
+        <div class="section-content">
+          <p>
+            These tools enable secure 1:1 snapshots of local directories to pCloud
+            with cryptographic integrity verification and Safety-Gate protection.
+          </p>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          Concept Overview
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Data Flow</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">Local Directory          →  Manifest (JSON)       →  pCloud upload
+/srv/nas/User1/            manifest.json            pCloud:/backups/
+├── Dokumente/              └── SHA-256 hashes       └── 1:1 snapshot
+├── Fotos/                  └── metadata
+└── ...</code></pre>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Required Files
+        </h3>
+
+        <div class="section-content">
+          <p>Download all scripts to <code>/opt/apps/pcloud-tools/</code>:</p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Purpose</th>
+              <th>Required</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>pcloud_bin_lib.py</code></td>
+              <td>Core pCloud API wrapper (authentication, upload, download)</td>
+              <td>✅ Yes</td>
+            </tr>
+            <tr>
+              <td><code>pcloud_json_manifest.py</code></td>
+              <td>Generate manifest with SHA256 hashes for snapshot directory</td>
+              <td>✅ Yes</td>
+            </tr>
+            <tr>
+              <td><code>pcloud_push_json_manifest_to_pcloud.py</code></td>
+              <td>Intelligent upload with deduplication (stubs vs full files)</td>
+              <td>✅ Yes</td>
+            </tr>
+            <tr>
+              <td><code>pcloud_restore.py</code></td>
+              <td>Download snapshots from pCloud (flat or object-store mode)</td>
+              <td>Optional</td>
+            </tr>
+            <tr>
+              <td><code>pcloud_integrity_check.py</code></td>
+              <td>Verify SHA256 checksums post-upload</td>
+              <td>Recommended</td>
+            </tr>
+            <tr>
+              <td><code>wrapper_pcloud_sync_1to1.sh</code></td>
+              <td>Complete backup wrapper (RTB → manifest → safety gate → upload)</td>
+              <td>✅ Yes</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          API Configuration
+        </h3>
+
+        <div class="section-content">
+          <p>
+            All pCloud backup tools read their credentials from a dedicated
+            <code>pcloud.env</code> file used only by the backup service account.
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/opt/apps/pcloud-tools/config/pcloud.env</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># pCloud API configuration (dedicated backup account)
+PCLOUD_API_HOST=eapi.pcloud.com  # or api.pcloud.com (US)
+PCLOUD_API_PORT=443
+PCLOUD_TOKEN=your_access_token_here
+
+# Backup paths
+PCLOUD_REMOTE_BASE=/Backup/rtb_1to1
+LOCAL_SNAPSHOT_DIR=/mnt/backup/rtb_nas/latest
+
+# Deduplication (object-store mode)
+OBJECT_STORE_MODE=1              # 1=enable, 0=flat copy
+CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <p><strong>Getting an API token (real-world process):</strong></p>
+          <ol>
+            <li>Create (or ask your admin to create) a dedicated pCloud account used only for backups.</li>
+            <li>Ask your pCloud admin or pCloud support to issue an API token / app password for this account.</li>
+            <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_1to1</code>).</li>
+            <li>Store the received token in <code>PCLOUD_TOKEN</code> inside <code>pcloud.env</code> and keep the file readable only by the backup user (for example <code>chmod 600</code>).</li>
+          </ol>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <p><strong>More detailed documentation:</strong></p>
+          <ul>
+            <li>
+              <a href="../PCLOUD_BACKUP_TOOLS_README.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>PCLOUD_BACKUP_TOOLS_README.md</code></a>
+              – end-to-end backup pipeline with RTB and pCloud
+            </li>
+            <li>
+              <a href="../PCLOUD_TOOLS_README.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>PCLOUD_TOOLS_README.md</code></a>
+              – usage and CLI options for all pCloud helper scripts
+            </li>
+            <li>
+              <a href="../docs_ARCHITECTURE_pcloud.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>docs_ARCHITECTURE_pcloud.md</code></a>
+              – detailed architecture and object-store design
+            </li>
+          </ul>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Wrapper Integration
+        </h3>
+
+        <div class="section-content">
+          <p>
+            The wrapper ties everything together: RTB snapshot, manifest
+            creation, Safety Gate, and pCloud upload using <code>pcloud.env</code>.
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">wrapper_pcloud_sync_1to1.sh (simplified)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">#!/bin/bash
+set -euo pipefail
+
+# 1. Create RTB snapshot
+/opt/apps/rsync-time-backup/rsync_tmbackup.sh /srv/nas /mnt/backup/rtb_nas
+
+# 2. Generate manifest with SHA256 hashes
+python3 /opt/apps/pcloud-tools/pcloud_json_manifest.py \
+  --snapshot /mnt/backup/rtb_nas/latest \
+  --output /tmp/manifest.json
+
+# 3. Safety Gate check (abort if RED)
+/opt/apps/entropywatcher/safety_gate.sh nas || exit 1
+
+# 4. Upload to pCloud with deduplication (reads /opt/apps/pcloud-tools/config/pcloud.env)
+python3 /opt/apps/pcloud-tools/pcloud_push_json_manifest_to_pcloud.py \
+  --manifest /tmp/manifest.json \
+  --object-store
+
+# 5. Verify integrity
+python3 /opt/apps/pcloud-tools/pcloud_integrity_check.py \
+  --manifest /tmp/manifest.json
+
+echo "Backup completed successfully"</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Restore -->
+      <section id="restore">
+        <h2 class="section-title">🔄 Restore Guide</h2>
+        <p class="section-meta">Source: <a href="../pcloud_restore.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>pcloud_restore.md</code></a></p>
+
+        <div class="section-content">
+          <p>
+            <code>pcloud_restore.py</code> restores backup snapshots from pCloud
+            using the <code>content_index.json</code> manifest. Two modes are
+            supported:
+          </p>
+
+          <ul>
+            <li>
+              <strong>Flat mode:</strong> Classic snapshot tree reconstruction
+              under <code>OUT_DIR/SNAPSHOT/...</code>
+            </li>
+            <li>
+              <strong>Object-store mode:</strong> Deduplicated local store with
+              SHA256-based objects and hardlinked snapshots
+            </li>
+          </ul>
+
+          <p>
+            Both modes include path-traversal guards to prevent malicious
+            <code>relpath</code> values from escaping the target directory.
+            Optional SHA256 verification with <code>--verify</code> ensures
+            download integrity.
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Flat Mode Example</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Show restore plan (dry-run, no downloads)
+python pcloud_restore.py \
+  --manifest pcloud \
+  --snapshot 2025-11-23-082336 \
+  --out-dir /tmp/restore
+
+# Download and verify snapshot
+python pcloud_restore.py \
+  --manifest pcloud \
+  --snapshot 2025-11-23-082336 \
+  --out-dir /tmp/restore \
+  --download --verify</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Object-Store Mode Example</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Restore into deduplicated object store with hardlinked snapshot view
+python pcloud_restore.py \
+  --mode object-store \
+  --manifest pcloud \
+  --snapshot 2025-11-23-082336 \
+  --local-objects-root /restore/_objects \
+  --local-snapshots-root /restore/_snapshots \
+  --download --verify</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- SQL Queries -->
+      <section id="sql">
+        <h2 class="section-title">🔍 SQL Queries</h2>
+        <p class="section-meta">
+          Sources: <a href="../SQL_QUERIES.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>SQL_QUERIES.md</code></a>, <a href="../SQL_QUERIES_DE.md" target="_blank" style="color: var(--accent); text-decoration: none;"><code>SQL_QUERIES_DE.md</code></a>
+        </p>
+
+        <div class="section-content">
+          <p>
+            Copy/paste-ready SQL queries for common operational tasks against the
+            <code>entropywatcher</code> MariaDB database. Use these for checking
+            last runs, counts, AV events, flagged files, and maintenance.
+          </p>
+
+          <p>
+            <strong>Primary tables:</strong> <code>scan_summary</code>,
+            <code>run_summaries</code>, <code>av_events</code>, <code>files</code>
+          </p>
+        </div>
+
+        <!-- MySQL Connection -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          MySQL Connection Setup
+        </h3>
+        <div class="section-content">
+          <p>Connect to the MariaDB database with the <code>mysql</code> client:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Connect to Database</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash"># Interactive login (prompts for password)
+mysql -u entropyuser -p entropywatcher
+
+# Direct connection with password (less secure, for scripts)
+mysql -u entropyuser -p'your_password' entropywatcher
+
+# From remote host
+mysql -h db.example.com -u entropyuser -p entropywatcher</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content">
+          <p>
+            Once connected, you can run any of the queries below. To see all available tables:
+          </p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">List Tables</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">-- Show all tables in the database
+SHOW TABLES;
+
+-- Show table structure
+DESCRIBE scan_summary;</code></pre>
+          </div>
+        </div>
+
+        <!-- Schema Checks -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          0. Schema Checks
+        </h3>
+        <div class="section-content">
+          <p>Verify table structure and available sources:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Table Schema</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">-- Show columns for tables
+DESCRIBE scan_summary;
+DESCRIBE run_summaries;
+DESCRIBE av_events;
+DESCRIBE files;
+
+-- List all distinct source values
+SELECT DISTINCT source FROM scan_summary ORDER BY source;
+SELECT DISTINCT source FROM av_events ORDER BY source;</code></pre>
+          </div>
+        </div>
+
+        <!-- Per-Source Overview -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          1. Per-Source Overview
+        </h3>
+        <div class="section-content">
+          <p>Last run timestamps and scan counts per service:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">All Sources - Last Scan Summary</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  s.source,
+  COUNT(*) AS scan_count,
+  MAX(s.finished_at) AS last_scan,
+  DATE_FORMAT(MAX(s.finished_at), '%d.%m.%Y %H:%i') AS last_scan_readable,
+  TIMESTAMPDIFF(MINUTE, MAX(s.finished_at), NOW()) AS minutes_since_last
+FROM scan_summary s
+GROUP BY s.source
+ORDER BY last_scan DESC;</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Weekly Services Only</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  source,
+  COUNT(*) AS scan_count,
+  MAX(finished_at) AS last_scan,
+  DATE_FORMAT(MAX(finished_at), '%d.%m.%Y %H:%i') AS last_scan_readable,
+  TIMESTAMPDIFF(MINUTE, MAX(finished_at), NOW()) AS minutes_since_last
+FROM scan_summary
+WHERE source LIKE '%weekly'
+GROUP BY source
+ORDER BY last_scan DESC;</code></pre>
+          </div>
+        </div>
+
+        <!-- Recent Scan History -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          2. Recent Scan History
+        </h3>
+        <div class="section-content">
+          <p>Last 10 scans for a specific service (replace <code>nas-av-weekly</code> as needed):</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Single Service History</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  finished_at,
+  started_at,
+  source,
+  candidates,
+  files_processed,
+  av_found_count,
+  flagged_new_count,
+  note
+FROM scan_summary
+WHERE source = 'nas-av-weekly'
+ORDER BY finished_at DESC
+LIMIT 10;</code></pre>
+          </div>
+        </div>
+
+        <!-- AV Events -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          3. AV Events (ClamAV Findings)
+        </h3>
+        <div class="section-content">
+          <p>Track malware detections and quarantine actions:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">AV Events Summary by Source</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  source,
+  COUNT(*) AS av_event_count,
+  MAX(detected_at) AS last_detected,
+  DATE_FORMAT(MAX(detected_at), '%d.%m.%Y %H:%i') AS last_detected_readable,
+  TIMESTAMPDIFF(MINUTE, MAX(detected_at), NOW()) AS minutes_since_last
+FROM av_events
+GROUP BY source
+ORDER BY last_detected DESC;</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Recent AV Events (Last 50)</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  detected_at,
+  source,
+  path,
+  signature,
+  action,
+  quarantine_path,
+  extra
+FROM av_events
+ORDER BY detected_at DESC
+LIMIT 50;</code></pre>
+          </div>
+        </div>
+
+        <!-- Flagged Files -->
+        <h3 style="font-size: 1.25rem; margin: 2rem 0 0.75rem; color: var(--text);">
+          4. Flagged Files (Entropy Anomalies)
+        </h3>
+        <div class="section-content">
+          <p>List files flagged due to entropy jumps or high entropy:</p>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Recent Flagged Files</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  id,
+  path,
+  start_entropy,
+  last_entropy,
+  flagged,
+  flagged_at,
+  source,
+  note
+FROM files
+WHERE flagged = 1
+ORDER BY flagged_at DESC
+LIMIT 100;</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">Flagged Count by Source</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-sql">SELECT
+  source,
+  COUNT(*) AS flagged_count
+FROM files
+WHERE flagged = 1
+GROUP BY source
+ORDER BY flagged_count DESC;</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 2rem;">
+          <p>
+            <strong>Note:</strong> For complete query collections including
+            combined dashboards, maintenance queries, and German translations, see
+            <a href="../SQL_QUERIES.md" target="_blank" style="color: var(--accent); text-decoration: underline;"><code>SQL_QUERIES.md</code></a> and
+            <a href="../SQL_QUERIES_DE.md" target="_blank" style="color: var(--accent); text-decoration: underline;"><code>SQL_QUERIES_DE.md</code></a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- EntropyWatcher Helper Scripts -->
+      <section id="entropywatcher-helpers">
+        <h2 class="section-title">🛠️ EntropyWatcher Helper Scripts</h2>
+        <p class="section-meta">
+          Kurzreferenz für Infrastruktur-/Debug-Skripte rund um EntropyWatcher, Systemd-Timer und pCloud OAuth2.
+        </p>
+
+        <div class="section-content">
+          <h3 style="margin-top: 0.5rem;">Virtualenv einmal korrekt benutzen</h3>
+          <p>
+            Viele Helfer-Skripte erwarten eine aktivierte Python&nbsp;virtualenv auf dem Server. Der typische Ablauf lautet:
+          </p>
+        </div>
+
+        <div class="code-wrapper" style="margin-top: 0.75rem;">
+          <div class="code-header">
+            <span class="code-label">Beispiel: venv aktivieren und EntropyWatcher-Skripte starten</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-bash">cd /opt/apps/entropywatcher
+source venv/bin/activate
+cd main
+
+# Dashboard-Status (Health, letzte Scans, Farblogik)
+bash ew_status.sh /opt/apps/entropywatcher/config dashboard
+
+# Systemd-Timer-Übersicht (Enabled/Active/LastRun/NextRun)
+./ew_forecast_next_run.sh
+
+# Optional: Safety-Gate-Forecast für Backup-Pipeline
+./forecast_safety_gate.sh</code></pre>
+          </div>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <h3>EntropyWatcher Infrastruktur-Skripte</h3>
+          <ul>
+            <li>
+              <code>ew_status.sh</code> –
+              zeigt Health-Status der EntropyWatcher-Services (NAS/OS, AV, weekly),
+              inklusive Farbe (GREEN/YELLOW/RED) basierend auf <code>HEALTH_WINDOW_MIN</code>.
+              Typisch für Dashboards und Safety-Gate-Checks.
+            </li>
+            <li>
+              <code>ew_forecast_next_run.sh</code> –
+              reines Infrastruktur-Skript, das alle relevanten Systemd-Timer wie
+              <code>entropywatcher-nas.timer</code> anzeigt (Enabled/Active/LastRun/NextRun).
+              Feste Spaltenbreiten sorgen für perfekte vertikale Linien; der Stil kann
+              mit <code>STYLE=ascii</code> (stabil) oder <code>STYLE=box</code> (schön) gewählt werden.
+            </li>
+            <li>
+              <code>forecast_safety_gate.sh</code> –
+              simuliert die nächste Backup-Pipeline (<code>04:00</code>, <code>12:00</code>, <code>20:00</code>)
+              und berechnet für jeden EntropyWatcher-Service den erwarteten Status zum
+              Pipeline-Start (GREEN/YELLOW/RED) basierend auf <code>OnCalendar</code>-Timer
+              und Health-Fenstern. Optionales Argument <code>OFFSET_DAYS</code> erlaubt Szenarien
+              in der Zukunft (z.&nbsp;B. <code>./forecast_safety_gate.sh 1</code> für morgen).
+            </li>
+            <li>
+              <code>ew_backup_slot_check.sh</code> –
+              prüft, ob zum aktuellen (oder angegebenen) Backup-Slot alle
+              EntropyWatcher-Checks innerhalb des Health-Fensters liegen und das
+              Safety-Gate für die pCloud-Backup-Pipeline „grün“ ist.
+            </li>
+          </ul>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <h3>Quick Checks &amp; Test-Skripte</h3>
+          <ul>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <h3>Beispielausgaben</h3>
+          <p><strong>Timer-Status (ew_forecast_next_run.sh, ASCII-Stil)</strong></p>
+          <div class="code-wrapper" style="margin-top: 0.5rem;">
+            <div class="code-header">
+              <span class="code-label">./ew_forecast_next_run.sh</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+<pre><code class="language-bash">EntropyWatcher / Backup-Pipeline Timer-Status
+
+Unit                              | Enabled | Active  | LastRun                                       | NextRun
+-----------------------------------+---------+---------+--------------------------------------------+--------------------------------------------
+entropywatcher-nas.timer          | enabled | active  | Sun 2025-12-07 21:24:41 (24m)              | Sun 2025-12-07 22:24:41 (36m)
+entropywatcher-nas-av.timer       | enabled | active  | Sun 2025-12-07 11:39:09 (10h)              | Mon 2025-12-08 11:39:09 (13h)
+entropywatcher-nas-av-weekly.timer| enabled | active  | Sun 2025-12-01 03:00:00 (6d)               | Sun 2025-12-08 03:00:00 (7d)
+...
+</code></pre>
+            </div>
+          </div>
+
+          <p style="margin-top: 1rem;"><strong>Safety-Gate-Forecast (forecast_safety_gate.sh)</strong></p>
+          <div class="code-wrapper" style="margin-top: 0.5rem;">
+            <div class="code-header">
+              <span class="code-label">./forecast_safety_gate.sh</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+<pre><code class="language-bash">════════════════════════════════════════════════════════════════════════════
+  pCloud Backup Pipeline Forecast für: 2025-12-08
+  Pipeline-Starts: 04:00 / 12:00 / 20:00
+════════════════════════════════════════════════════════════════════════════
+
+───────────────────────────────────────────────────────────────────────────
+  Pipeline-Start: 2025-12-08 04:00
+───────────────────────────────────────────────────────────────────────────
+Service       | Last Scan          | Age  | Schedule      | Window | Status
+------------- | -------------------| -----| ------------- | ------ | ------
+nas           | 2025-12-07 21:24   | 6h   | 1h (:20)      |    120 | GREEN
+nas-av        | 2025-12-07 11:39   | 16h  | 1d (03:40)    |   1560 | GREEN
+nas-av-weekly | 2025-12-01 03:00   | 7d   | So (03:00)    |  11520 | YELLOW
+...
+</code></pre>
+            </div>
+          </div>
+            <li>
+              <code>tools/test_commands.sh</code> –
+              bündelt typische EntropyWatcher- und Backup-Kommandos für einen
+              schnellen manuellen Funktionstest (Services, Timer, Safety-Gate).
+            </li>
+            <li>
+              <code>tools/quick_test.sh</code> –
+              sehr leichter Smoke-Test, um nach einem Deployment zu prüfen, ob
+              die wichtigsten Pfade und Konfigurationen konsistent sind.
+            </li>
+          </ul>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <h3>pCloud OAuth2 Hilfsprogramme</h3>
+          <ul>
+            <li>
+              <code>tools/oauth/test_getfilelink.py</code> –
+              ruft mit einem vorhandenen Access Token (aus <code>token.env</code>
+              oder Umgebung) einen <em>getfilelink</em>-API-Call gegen pCloud ab,
+              um Token und Hostname zu verifizieren.
+            </li>
+            <li>
+              <code>tools/oauth/test_token.py</code> –
+              prüft, ob ein vorhandener Token technisch gültig ist (API-Call,
+              Fehlercodes, JSON-Response) und eignet sich für CI-/Health-Checks.
+            </li>
+            <li>
+              <code>tools/oauth/oauth2_flow.py</code> –
+              komfortables CLI-Tool für den pCloud OAuth2 Code Flow: startet
+              einen lokalen HTTP-Server, öffnet den Browser, empfängt den
+              Redirect und tauscht den Code gegen ein Access Token. Schreibt
+              das Ergebnis in <code>token.env</code> (inkl. Hostname, UID und
+              kompletter JSON-Response) und setzt die Dateirechte auf <code>0600</code>.
+              Fällt bei Problemen automatisch auf manuelle Eingabe der Redirect-URL
+              bzw. des Codes zurück.
+            </li>
+          </ul>
+        </div>
+
+        <div class="section-content" style="margin-top: 1.5rem;">
+          <h3>Direkte EntropyWatcher-CLI (Python)</h3>
+          <p>
+            Neben den Shell-Wrappern kann <code>entropywatcher.py</code> direkt aus der
+            aktivierten virtualenv aufgerufen werden. Das ist besonders nützlich für
+            Debugging, einmalige Analysen oder CI-Skripte, die den JSON-Status
+            weiterverarbeiten.
+          </p>
+
+          <p><strong>Beispiel: Status für NAS mit explizitem Health-Fenster (75&nbsp;Minuten)</strong></p>
+          <div class="code-wrapper" style="margin-top: 0.5rem;">
+            <div class="code-header">
+              <span class="code-label">Status-Check (NAS, 75&nbsp;Minuten Fenster)</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+              <pre><code class="language-bash"># innerhalb der aktivierten venv in /opt/apps/entropywatcher/main
+python entropywatcher.py \&#10;  --env /opt/apps/entropywatcher/config/common.env \&#10;  --env /opt/apps/entropywatcher/config/nas.env \&#10;  status --window-min 75</code></pre>
+            </div>
+          </div>
+
+          <p style="margin-top: 1rem;">
+            Typische Ausgabe (gekürzt):
+          </p>
+          <div class="code-wrapper" style="margin-top: 0.5rem;">
+            <div class="code-header">
+              <span class="code-label">JSON-Response</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+              <pre><code class="language-json">{"status": "green", "since": "2025-12-07T21:49:06", "window_min": 75,
+ "counters": {"av_findings": 0, "flagged": 0, "age_min": 24.42, "safeage_min": 10},
+ "last_runs": {"scan": "2025-12-07T21:24:41", "av_scan": null},
+ "reasons": []}</code></pre>
+            </div>
+          </div>
+
+          <p style="margin-top: 1rem;">
+            Weitere Varianten (ebenfalls direkt kopierbar):
+          </p>
+
+          <div class="code-wrapper" style="margin-top: 0.5rem;">
+            <div class="code-header">
+              <span class="code-label">NAS AV täglich (Status)</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+              <pre><code class="language-bash"># innerhalb der aktivierten venv in /opt/apps/entropywatcher/main
+python entropywatcher.py \&#10;  --env /opt/apps/entropywatcher/config/common.env \&#10;  --env /opt/apps/entropywatcher/config/nas-av.env \&#10;  status --window-min 1560</code></pre>
+            </div>
+          </div>
+
+          <div class="code-wrapper" style="margin-top: 0.75rem;">
+            <div class="code-header">
+              <span class="code-label">NAS AV wöchentlich (Status mit Debug)</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+              <pre><code class="language-bash"># innerhalb der aktivierten venv in /opt/apps/entropywatcher/main
+python entropywatcher.py \&#10;  --env /opt/apps/entropywatcher/config/common.env \&#10;  --env /opt/apps/entropywatcher/config/nas-av-weekly.env \&#10;  status --window-min 11520 --debug</code></pre>
+            </div>
+          </div>
+
+          <div class="code-wrapper" style="margin-top: 0.75rem;">
+            <div class="code-header">
+              <span class="code-label">Direkter Scan-Lauf (NAS)</span>
+              <button class="copy-btn" data-copy>Copy</button>
+            </div>
+            <div class="code-block">
+              <pre><code class="language-bash"># innerhalb der aktivierten venv in /opt/apps/entropywatcher/main
+python entropywatcher.py \&#10;  --env /opt/apps/entropywatcher/config/common.env \&#10;  --env /opt/apps/entropywatcher/config/nas.env \&#10;  scan --paths "/srv/nas"</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // Active navigation highlighting based on scroll position
+      const sections = document.querySelectorAll('section[id], header[id]');
+      const navLinks = document.querySelectorAll('.nav-link');
+
+      let currentActive = null;
+      let isScrollingFromClick = false;
+
+      function setActiveLink(id) {
+        if (currentActive !== id) {
+          currentActive = id;
+          navLinks.forEach((link) => {
+            const href = link.getAttribute('href');
+            if (href === `#${id}`) {
+              link.classList.add('active');
+            } else {
+              link.classList.remove('active');
+            }
+          });
+        }
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          // Skip observer updates during click-triggered scrolling
+          if (isScrollingFromClick) return;
+
+          // Find the entry that's most visible
+          let mostVisible = null;
+          let maxRatio = 0;
+
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
+              mostVisible = entry.target;
+            }
+          });
+
+          if (mostVisible && mostVisible.id) {
+            setActiveLink(mostVisible.id);
+          }
+        },
+        {
+          rootMargin: '-10% 0px -50% 0px',
+          threshold: [0, 0.25, 0.5, 0.75, 1.0],
+        }
+      );
+
+      sections.forEach((section) => observer.observe(section));
+
+      // Handle navigation link clicks
+      navLinks.forEach((link) => {
+        link.addEventListener('click', (e) => {
+          const href = link.getAttribute('href');
+          if (href && href.startsWith('#')) {
+            const targetId = href.substring(1);
+            
+            // Set active immediately on click
+            setActiveLink(targetId);
+            
+            // Disable observer during scroll
+            isScrollingFromClick = true;
+            
+            // Re-enable observer after scroll completes
+            setTimeout(() => {
+              isScrollingFromClick = false;
+            }, 1000);
+          }
+        });
+      });
+
+      // Copy button functionality
+      document.querySelectorAll('.copy-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const wrapper = btn.closest('.code-wrapper');
+          const code = wrapper.querySelector('pre code');
+          if (!code) return;
+
+          try {
+            const text = code.textContent;
+            await navigator.clipboard.writeText(text);
+            const original = btn.textContent;
+            btn.textContent = '✓ Copied';
+            setTimeout(() => {
+              btn.textContent = original;
+            }, 1500);
+          } catch (err) {
+            console.error('Copy failed:', err);
+            btn.textContent = '✗ Failed';
+            setTimeout(() => {
+              btn.textContent = 'Copy';
+            }, 1500);
+          }
+        });
+      });
+    </script>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ini.min.js"></script>
+  </body>
+</html>

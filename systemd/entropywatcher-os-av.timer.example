@@ -1,0 +1,14 @@
+# /etc/systemd/system/entropywatcher-os-av.timer
+[Unit]
+Description=EntropyWatcher OS AV daily (Mon..Sat)
+
+[Timer]
+OnCalendar=Mon..Sun 02:40
+Persistent=true
+RandomizedDelaySec=10m
+AccuracySec=1min
+Unit=entropywatcher-os-av.service
+
+[Install]
+WantedBy=timers.target
+

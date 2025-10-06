@@ -1,0 +1,17 @@
+# /etc/systemd/system/backup-pipeline.timer
+[Unit]
+Description=Backup Pipeline (RTB + pCloud) - 3x täglich
+
+[Timer]
+# Erster Start 10 Min nach Boot (nach EntropyWatcher)
+OnBootSec=10min
+# Dann 3x täglich: 04:00, 12:00, 20:00 (nach EntropyWatcher-Scans)
+OnCalendar=*-*-* 04:00:00
+OnCalendar=*-*-* 12:00:00
+OnCalendar=*-*-* 20:00:00
+# Bei verpassten Läufen nachholen
+Persistent=true
+Unit=backup-pipeline.service
+
+[Install]
+WantedBy=timers.target

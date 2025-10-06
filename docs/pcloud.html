@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pCloud Backup Tools – Detailed Documentation</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Oxygen, Ubuntu, sans-serif;
+        background: #0a0e1a;
+        color: #e2e8f0;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 960px;
+        margin: 2rem auto;
+        padding: 0 1.5rem 3rem;
+      }
+      h1, h2, h3 {
+        color: #e2e8f0;
+      }
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+        margin-top: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+      h3 {
+        font-size: 1.2rem;
+        margin-top: 1.75rem;
+        margin-bottom: 0.5rem;
+      }
+      p {
+        color: #cbd5f5;
+        font-size: 0.95rem;
+      }
+      ul, ol {
+        color: #cbd5f5;
+        font-size: 0.95rem;
+      }
+      code {
+        font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      }
+      pre {
+        background: #141920;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+        border: 1px solid #1e2530;
+      }
+      a {
+        color: #10b981;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0.75rem 0 1.5rem;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        background: #111827;
+        border: 1px solid #1f2937;
+        font-size: 0.75rem;
+        color: #9ca3af;
+      }
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #10b981;
+      }
+      .muted {
+        color: #9ca3af;
+        font-size: 0.85rem;
+      }
+      .table-like {
+        font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.8rem;
+        white-space: pre;
+        background: #111827;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        border: 1px solid #1f2937;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>pCloud Backup Tools</h1>
+      <p class="muted">Detailed documentation for the pCloud 1:1 backup pipeline with EntropyWatcher safety-gate.</p>
+
+      <div class="badge-row">
+        <span class="badge"><span class="badge-dot"></span> Production setup (home NAS)</span>
+        <span class="badge">Python 3.11+</span>
+        <span class="badge">RTB + pCloud</span>
+      </div>
+
+      <h2>1. Concept</h2>
+      <p>The pCloud tools implement a 1:1 snapshot backup pipeline. Local RTB snapshots are turned into JSON manifests and uploaded to pCloud with SHA256-based deduplication and post-upload integrity checks.</p>
+
+      <div class="table-like">
+Lokales Verzeichnis    →    Manifest (JSON)    →    pCloud Upload
+/srv/nas/User1/            manifest.json           pCloud:/backups/
+├── Dokumente/              └── SHA-256 Hashes      └── 1:1 Snapshot
+├── Fotos/                  └── Metadaten
+└── ...
+      </div>
+
+      <h2>2. Components</h2>
+      <h3>2.1 pcloud_json_manifest.py</h3>
+      <p>Scans a snapshot directory and creates a JSON manifest with file metadata and SHA256 hashes.</p>
+      <pre><code class="language-bash">python pcloud_json_manifest.py \
+  --source /srv/nas/User1 \
+  --output manifest_$(date +%Y%m%d_%H%M%S).json \
+  --exclude ".git,node_modules,*.tmp"</code></pre>
+      <pre><code class="language-json">{
+  "created": "2025-11-23T15:30:00Z",
+  "source": "/srv/nas/User1",
+  "files": [
+    {
+      "path": "Dokumente/invoice.pdf",
+      "size": 245678,
+      "mtime": "2025-11-20T10:15:00Z",
+      "sha256": "abc123...def456"
+    }
+  ]
+}</code></pre>
+
+      <h3>2.2 pcloud_push_json_manifest_to_pcloud.py</h3>
+      <p>Reads a manifest and uploads the referenced files to pCloud with integrity validation.</p>
+      <pre><code class="language-bash">python pcloud_push_json_manifest_to_pcloud.py \
+  --manifest manifest_20251123_153000.json \
+  --pcloud-folder /backups/nas-user1 \
+  --auth-token "YOUR_PCLOUD_TOKEN"</code></pre>
+
+      <h3>2.3 pcloud_integrity_check.py</h3>
+      <p>Verifies that already uploaded data still matches the hashes from a manifest.</p>
+      <pre><code class="language-bash">python pcloud_integrity_check.py \
+  --manifest manifest_20251123_153000.json \
+  --pcloud-folder /backups/nas-user1 \
+  --auth-token "YOUR_PCLOUD_TOKEN"</code></pre>
+
+      <h3>2.4 pcloud_restore.py</h3>
+      <p>Restores pCloud snapshots either as a classic flat tree or into an object-store layout with a shared <code>_objects</code> directory and hardlinked snapshots.</p>
+
+      <h3>2.5 wrapper_pcloud_sync_1to1.sh</h3>
+      <p>Orchestrates safety-gate check, manifest creation and upload.</p>
+      <pre><code class="language-bash">#!/bin/bash
+set -e
+
+SAFETY_GATE="/opt/apps/entropywatcher/main/safety_gate.sh"
+SOURCE="/srv/nas/User1"
+MANIFEST="/tmp/manifest_$(date +%Y%m%d_%H%M%S).json"
+PCLOUD_FOLDER="/backups/nas-user1"
+
+# 1. Safety gate
+if ! "$SAFETY_GATE"; then
+    echo "❌ Backup aborted - EntropyWatcher detected threats"
+    exit 1
+fi
+
+# 2. Manifest
+python3 /opt/pcloud/pcloud_json_manifest.py \
+  --source "$SOURCE" \
+  --output "$MANIFEST"
+
+# 3. Upload
+python3 /opt/pcloud/pcloud_push_json_manifest_to_pcloud.py \
+  --manifest "$MANIFEST" \
+  --pcloud-folder "$PCLOUD_FOLDER"
+
+# 4. Cleanup
+rm "$MANIFEST"
+echo "✅ Backup completed successfully"</code></pre>
+
+      <h2>3. System Architecture</h2>
+      <p>This section summarizes how RTB snapshots, manifests, safety-gate and pCloud upload work together.</p>
+      <pre><code class="language-bash">1. DATA SOURCE
+   └─ /srv/nas/User1, /srv/nas/User2, /srv/nas/User3
+
+2. SNAPSHOT CREATION (RTB)
+   └─ /mnt/backup/rtb_nas/2025-11-24-120000/ (hardlinks + new files)
+      /mnt/backup/rtb_nas/latest → 2025-11-24-120000
+
+3. MANIFEST GENERATION
+   └─ pcloud_json_manifest.py
+      ├─ Scan snapshot directory tree
+      ├─ Calculate SHA256 for each file
+      └─ Output: /tmp/manifest.json
+
+4. SAFETY GATE CHECK (EntropyWatcher)
+   └─ safety_gate.sh
+      ├─ Check entropy scans
+      ├─ Check ClamAV findings
+      ├─ Check scan age
+      └─ Exit: 0=safe, 1/2=block
+
+5. INTELLIGENT UPLOAD
+   └─ pcloud_push_json_manifest_to_pcloud.py
+      ├─ Read manifest items
+      ├─ Check content_index.json on pCloud
+      ├─ For each file: reuse or upload
+      └─ Update content_index.json
+
+6. pCLOUD STORAGE
+   └─ /Backup/rtb_1to1/
+      ├─ _snapshots/
+      ├─ _index/content_index.json
+      └─ future snapshots</code></pre>
+
+      <h2>4. Safety-Gate Integration</h2>
+      <p>The backup pipeline relies on EntropyWatcher&apos;s safety-gate to block backups during ransomware or AV incidents.</p>
+      <pre class="table-like">Exit  Status  STRICT=0 behavior         STRICT=1 behavior
+0     GREEN   backup runs               backup runs
+1     YELLOW  backup runs with warning  backup blocked
+2     RED     backup blocked            backup blocked</pre>
+
+      <h2>5. Monitoring &amp; Troubleshooting</h2>
+      <h3>5.1 Monitoring</h3>
+      <pre><code class="language-bash"># EntropyWatcher status dashboard
+cd /opt/apps/entropywatcher/main
+bash ew_status.sh /opt/apps/entropywatcher/config dashboard
+
+# HTML report
+bash ew_status.sh /opt/apps/entropywatcher/config html /var/www/html/ew-status.html
+
+# Email alerts
+bash ew_status.sh /opt/apps/entropywatcher/config cron</code></pre>
+
+      <h3>5.2 Logs</h3>
+      <pre><code class="language-bash"># RTB wrapper logs
+journalctl -u backup-rtb.service -f
+
+# pCloud sync logs
+journalctl -u backup-pcloud.service -f
+
+# EntropyWatcher logs
+tail -f /var/log/entropywatcher/nas.log</code></pre>
+
+      <h3>5.3 When the safety-gate blocks backups</h3>
+      <pre><code class="language-bash">/opt/apps/entropywatcher/main/safety_gate.sh --debug
+bash ew_status.sh /opt/apps/entropywatcher/config dashboard</code></pre>
+
+      <p class="muted" style="margin-top: 2rem;">This page is a condensed HTML version of the Markdown documents <code>PCLOUD_BACKUP_TOOLS_README.md</code>, <code>PCLOUD_TOOLS_README.md</code> and <code>docs_ARCHITECTURE_pcloud.md</code>.</p>
+    </main>
+  </body>
+</html>

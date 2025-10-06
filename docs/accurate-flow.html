@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pCloud Backup – Akkurater Systemd-Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            border-bottom: 2px solid rgba(74, 200, 174, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #4ac8ae;
+            text-shadow: 0 2px 10px rgba(74, 200, 174, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #a0a0a0;
+            margin-bottom: 5px;
+        }
+
+        .diagram-container {
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(74, 200, 174, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin-bottom: 40px;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            background: rgba(20, 20, 40, 0.5);
+            padding: 20px;
+            border-radius: 8px;
+            min-width: fit-content;
+        }
+
+        h2 {
+            color: #4ac8ae;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        h3 {
+            color: #7dd3c0;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .info-box {
+            background: rgba(74, 200, 174, 0.1);
+            border-left: 4px solid #4ac8ae;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .warning-box {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid #ff9800;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .success-box {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4caf50;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(74, 200, 174, 0.2);
+        }
+
+        th {
+            background: rgba(74, 200, 174, 0.15);
+            color: #4ac8ae;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(74, 200, 174, 0.05);
+        }
+
+        .decision {
+            display: inline-block;
+            background: #ff9800;
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 0 2px;
+        }
+
+        .lock {
+            display: inline-block;
+            background: #9c27b0;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 0 2px;
+        }
+
+        .systemd {
+            display: inline-block;
+            background: #2196f3;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 0 2px;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(74, 200, 174, 0.2);
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .legend-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid #4ac8ae;
+            border-radius: 4px;
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: #4ac8ae;
+            margin-bottom: 5px;
+        }
+
+        .legend-desc {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+
+        ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(74, 200, 174, 0.2);
+            color: #808080;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="subtitle">🔒 Systemd-basierter Backup-Flow</div>
+            <h1>pCloud Backup – Akkurater Systemd-Service-Flow</h1>
+            <div class="subtitle">Sequence-Diagramm mit Lock, Conditional RTB & intelligenter pCloud-Sync</div>
+        </header>
+
+        <!-- Main Diagram -->
+        <div class="diagram-container">
+            <h2>📊 Backup-Pipeline Sequence (Systemd Services)</h2>
+            
+            <div class="info-box">
+                <strong>⚙️ Flow:</strong> Systemd Timer → rtb_wrapper.sh → [Safety-Gate?] → [Änderungen?] → RTB → pCloud-Sync
+            </div>
+
+            <div class="mermaid">
+                sequenceDiagram
+                    actor Timer as Systemd Timer
+                    participant RTB as rtb_wrapper.sh
+                    participant Lock as Lock File
+                    participant Gate as safety_gate.sh
+                    participant Rsync as rsync (dry-run)
+                    participant RTBScript as rsync_tmbackup.sh
+                    participant pCloudW as wrapper_pcloud_sync.sh
+                    participant pCloud as pCloud API
+                    participant DB as MariaDB
+
+                    Timer->>RTB: Timer triggert rtb_wrapper.sh
+                    Note over Timer: Systemd Timer (2:00 AM)
+
+                    RTB->>Lock: Acquire LOCKFILE<br/>/run/backup_pipeline.lock
+                    Lock->>RTB: ✓ Lock acquired
+                    Note over Lock: Verhindert Parallelität
+
+                    RTB->>Gate: 1️⃣ Call safety_gate.sh
+                    Gate->>DB: Query flagged, av_findings, age
+                    DB->>Gate: Ergebnisse
+                    
+                    alt Safety-Gate RESULT
+                        Gate->>RTB: Exit 0 (GREEN)
+                        Note over Gate: Sicher, Backup erlaubt
+                    else Gate Exit 1 (YELLOW/STRICT)
+                        Gate->>RTB: Exit 1 (YELLOW)
+                        RTB->>RTB: ❌ ABORT (strict=1)
+                        RTB->>Lock: Release Lock
+                        RTB->>Timer: Exit 1
+                    else Gate Exit 2 (RED)
+                        Gate->>RTB: Exit 2 (RED)
+                        RTB->>RTB: ❌ ABORT Ransomware/AV!
+                        RTB->>Lock: Release Lock
+                        RTB->>Timer: Exit 2
+                    end
+
+                    RTB->>Rsync: 2️⃣ rsync DRY-RUN<br/>Check Änderungen?
+                    Note over Rsync: Vergleicht SRC vs latest
+                    
+                    alt Änderungen gefunden
+                        Rsync->>RTB: grep -q ✓ (match)
+                    else Keine Änderungen
+                        Rsync->>RTB: grep -q ✗ (no match)
+                        RTB->>RTB: ⏭️ SKIP<br/>(NO_CHANGE_EXIT0=1)
+                        RTB->>Lock: Release Lock
+                        RTB->>Timer: Exit 0
+                    end
+
+                    RTB->>RTBScript: 3️⃣ START RTB Snapshot
+                    Note over RTBScript: rsync_tmbackup.sh
+                    RTBScript->>RTBScript: Hardlink-Optimierung
+                    RTBScript->>RTBScript: Dateien kopieren
+                    RTBScript->>RTBScript: /mnt/backup/rtb_nas/latest →<br/>2025-11-24-120000/
+                    RTBScript->>RTB: ✓ Exit 0 (Success)
+
+                    alt RTB Failed
+                        RTBScript->>RTB: ✗ Exit != 0
+                        RTB->>RTB: ❌ ABORT pCloud-Sync
+                        RTB->>Lock: Release Lock
+                        RTB->>Timer: Exit (non-zero)
+                    end
+
+                    RTB->>pCloudW: 4️⃣ START pCloud-Sync<br/>(Automatisch nach RTB)
+                    Note over pCloudW: wrapper_pcloud_sync_1to1.sh
+                    Note over Lock: Lock NOCH GEHALTEN!
+
+                    pCloudW->>pCloud: Preflight: OK?<br/>(Quota, Auth, Reachability)
+                    pCloud->>pCloudW: Status
+                    
+                    alt Preflight Failed
+                        pCloudW->>pCloudW: ⏭️ SKIP (DOWN/OVERQUOTA)
+                        pCloudW->>Timer: Exit 0 (graceful)
+                    end
+
+                    pCloudW->>pCloudW: Safety-Delay 120s
+                    Note over pCloudW: Warte nach RTB
+                    
+                    pCloudW->>pCloudW: Prüfe: Remote leer?
+                    
+                    alt Bootstrap (Remote leer)
+                        pCloudW->>pCloudW: 🔄 Backfill alle Snapshots<br/>(alt → neu)
+                    else Normalfall
+                        pCloudW->>pCloudW: Nur /latest hochladen?
+                        pCloudW->>pCloudW: Generate Manifest (SHA256)
+                        pCloudW->>pCloud: Push mit Deduplication
+                        pCloud->>pCloud: content_index.json prüfen
+                        pCloud->>pCloud: Nur NEW/CHANGED ⬆️
+                        pCloud->>pCloudW: ✓ Done
+                    end
+
+                    pCloudW->>RTB: ✓ Exit 0
+                    RTB->>Lock: 5️⃣ RELEASE Lock
+                    Note over Lock: Freigegeben für nächsten Run
+                    
+                    RTB->>Timer: ✓ Exit 0 (Pipeline komplett)
+                    Note over Timer: Finished successfully
+            </div>
+        </div>
+
+        <!-- Decision Tree -->
+        <div class="diagram-container">
+            <h2>🔀 Decision Tree – Wann läuft RTB/pCloud?</h2>
+
+            <div class="mermaid">
+                graph TD
+                    Start["Systemd Timer triggert<br/>rtb_wrapper.sh"]
+                    
+                    LockCheck{"🔒 Lock verfügbar?"}
+                    LockWait["⏳ Warten (max 2h)<br/>oder Skip"]
+                    
+                    SafeGate["🛡️ safety_gate.sh"]
+                    HoneyCheck{"🍯 1. Honeyfiles<br/>OK?"}
+                    EntropyNAS{"📊 2a. Entropy NAS<br/>Status?"}
+                    EntropyAV{"🦠 2b. ClamAV NAS-AV<br/>Status?"}
+                    
+                    SafeGreen["🟢 GREEN"]
+                    SafeYellow["🟡 YELLOW<br/>(strict=1)"]
+                    SafeRed["🔴 RED"]
+                    
+                    DryRun{"🔍 rsync dry-run<br/>Änderungen?"}
+                    Changes["✓ JA"]
+                    NoChanges["✗ NEIN"]
+                    
+                    RTBStart["▶️ RTB START<br/>rsync_tmbackup.sh"]
+                    RTBSuccess{"RTB Exit<br/>Code = 0?"}
+                    
+                    pCloudStart["▶️ pCloud-Sync START<br/>wrapper_pcloud_sync.sh"]
+                    
+                    Preflight{"✅ pCloud Preflight<br/>(Quota, Auth)?"}
+                    pCloudProcess["Manifest → Push<br/>→ Deduplication"]
+                    
+                    Done["✅ FERTIG<br/>Lock released"]
+                    Abort["❌ ABORT<br/>Lock released"]
+                    Skip["⏭️ SKIP<br/>Lock released"]
+
+                    Start --> LockCheck
+                    LockCheck -->|JA| SafeGate
+                    LockCheck -->|NEIN| LockWait --> Skip
+                    
+                    SafeGate --> HoneyCheck
+                    HoneyCheck -->|ALARM| SafeRed
+                    HoneyCheck -->|OK| EntropyNAS
+                    EntropyNAS --> EntropyAV
+                    EntropyAV -->|Alle GREEN| SafeGreen
+                    EntropyAV -->|Mind. 1 YELLOW| SafeYellow
+                    EntropyAV -->|Mind. 1 RED| SafeRed
+                    
+                    SafeGreen --> DryRun
+                    SafeYellow --> Abort
+                    SafeRed --> Abort
+                    
+                    DryRun --> Changes
+                    DryRun --> NoChanges
+                    
+                    Changes --> RTBStart
+                    NoChanges --> Skip
+                    
+                    RTBStart --> RTBSuccess
+                    RTBSuccess -->|JA| pCloudStart
+                    RTBSuccess -->|NEIN| Abort
+                    
+                    pCloudStart --> Preflight
+                    Preflight -->|OK| pCloudProcess
+                    Preflight -->|FAILED| Skip
+                    
+                    pCloudProcess --> Done
+                    
+                    Abort --> Abort
+                    Skip --> Skip
+                    Done --> Done
+
+                    style SafeGreen fill:#4caf50,color:#fff
+                    style SafeYellow fill:#ff9800,color:#fff
+                    style SafeRed fill:#d32f2f,color:#fff
+                    style RTBStart fill:#2196f3,color:#fff
+                    style pCloudStart fill:#2196f3,color:#fff
+                    style Done fill:#4caf50,color:#fff
+                    style Abort fill:#d32f2f,color:#fff
+                    style Skip fill:#ff9800,color:#fff
+            </div>
+        </div>
+
+        <!-- Critical Points -->
+        <div class="diagram-container">
+            <h2>⚡ Kritische Punkte & Lock-Mechanik</h2>
+
+            <h3>1️⃣ Safety-Gate (Erstes Gating)</h3>
+            <div class="info-box">
+                <strong>Warum vor RTB?</strong><br>
+                Verhindert, dass RTB Snapshots erstellt, wenn Ransomware aktiv ist.
+                <div class="code-block">
+if [[ "$ENTROPYWATCHER_ENABLE" -eq 1 && "$FORCE" -ne 1 ]]; then<br>
+&nbsp;&nbsp;"$ENTROPYWATCHER_SAFETY_GATE" --strict<br>
+&nbsp;&nbsp;EXIT=$?<br>
+&nbsp;&nbsp;case $EXIT in<br>
+&nbsp;&nbsp;&nbsp;&nbsp;0) echo "GREEN - OK" ;;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;1) echo "YELLOW - ABORT (strict)" ;;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;2) echo "RED - ABORT" ;;<br>
+&nbsp;&nbsp;esac<br>
+fi
+                </div>
+            </div>
+
+            <h3>2️⃣ rsync Dry-Run (Zweites Gating)</h3>
+            <div class="info-box">
+                <strong>Warum prüfen, ob es Änderungen gibt?</strong><br>
+                Verhindert unnötige Snapshots wenn nichts neu ist → spart Platz + Zeit.
+                <div class="code-block">
+# Vergleich: /srv/nas vs /mnt/backup/rtb_nas/latest<br>
+rsync -ni --delete \<br>
+&nbsp;&nbsp;--links --hard-links \<br>
+&nbsp;&nbsp;/srv/nas/ latest/ \<br>
+&nbsp;&nbsp;| grep -qE '^[&lt;>ch*]'  # Match = Änderungen<br>
+<br>
+if match: START RTB<br>
+else: EXIT 0 (skip)
+                </div>
+            </div>
+
+            <h3>3️⃣ Lock-Mechanik (Verhindert Parallelität)</h3>
+            <div class="warning-box">
+                <strong>🔒 CRITICAL:</strong> Selbes Lockfile für RTB UND pCloud-Sync!
+                <div class="code-block">
+# In rtb_wrapper.sh UND wrapper_pcloud_sync.sh:<br>
+LOCKFILE=/run/backup_pipeline.lock<br>
+exec 9>"$LOCKFILE"<br>
+if ! flock -w 7200 9; then  # 2h Timeout<br>
+&nbsp;&nbsp;exit 0  # Graceful skip wenn Lock gebunden<br>
+fi<br>
+<br>
+# Flow:<br>
+# 1. rtb_wrapper holt Lock<br>
+# 2. Safety-Gate prüfen<br>
+# 3. RTB läuft<br>
+# 4. pCloud-Sync startet (Lock NOCH gehalten!)<br>
+# 5. Am Ende: Lock freigeben<br>
+<br>
+# → Keine Parallelität möglich!
+                </div>
+            </div>
+
+            <h3>4️⃣ RTB → pCloud Transition</h3>
+            <div class="success-box">
+                <strong>✅ Automatische Verkettung:</strong><br>
+                Nach erfolgreichem RTB wird pCloud-Wrapper sofort gestartet (NOCH IM SELBEN PROZESS):
+                <div class="code-block">
+# RTB erfolgreich?<br>
+if [[ $RTB_EXIT -eq 0 ]]; then<br>
+&nbsp;&nbsp;# Starte pCloud-Sync (Lock NOCH GEHALTEN!)<br>
+&nbsp;&nbsp;bash "$PCLOUD_WRAPPER"<br>
+fi<br>
+<br>
+# Lock wird erst am ENDE von rtb_wrapper freigeben,<br>
+# nachdem auch pCloud-Sync durch ist!
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="diagram-container">
+            <h2>📋 Vergleich: Alte vs. Neue Logik</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspekt</th>
+                        <th>Alte Darstellung (Deine Grafik)</th>
+                        <th>✅ Akkurate Logik (Neue Grafik)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Timer</strong></td>
+                        <td>Cron Timer</td>
+                        <td>Systemd Timer (stündlich/täglich)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>RTB Trigger</strong></td>
+                        <td>Automatisch nach Safety-Gate</td>
+                        <td>Nur wenn GREEN UND Änderungen erkannt</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Änderungs-Check</strong></td>
+                        <td>Nicht dargestellt</td>
+                        <td>rsync dry-run vor RTB (2nd gate)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>pCloud Start</strong></td>
+                        <td>Nach RTB (separate Instanz)</td>
+                        <td>Nach RTB (vom rtb_wrapper aus)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Lock</strong></td>
+                        <td>Nicht dargestellt</td>
+                        <td>Gemeinsam für RTB + pCloud (2h Timeout)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fehlerbehandlung</strong></td>
+                        <td>ABORT / PROCEED</td>
+                        <td>Granular: ABORT / SKIP / PROCEED + Graceful Timeouts</td>
+                    </tr>
+                    <tr>
+                        <td><strong>pCloud Preflight</strong></td>
+                        <td>Nicht dargestellt</td>
+                        <td>OK / OVERQUOTA / DOWN Check</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bootstrap vs. Incr</strong></td>
+                        <td>Nicht dargestellt</td>
+                        <td>Auto-Detection: Remote leer → Backfill alle</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Timing Example -->
+        <div class="diagram-container">
+            <h2>⏱️ Zeitbeispiel – Was passiert um 02:00?</h2>
+
+            <div class="code-block">
+<strong>02:00:00</strong> – Systemd Timer triggert rtb_wrapper.sh<br>
+<strong>02:00:01</strong> – Lock acquired (/run/backup_pipeline.lock)<br>
+<strong>02:00:02</strong> – safety_gate.sh abgerufen<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Query DB: flagged=0, av_findings=0, age ok?<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ EXIT 0 (GREEN) ✓<br>
+<br>
+<strong>02:00:05</strong> – rsync dry-run prüft Änderungen<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/srv/nas/ vs /mnt/backup/rtb_nas/latest/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ Änderungen gefunden! ✓<br>
+<br>
+<strong>02:00:06</strong> – RTB (rsync_tmbackup.sh) STARTS<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/mnt/backup/rtb_nas/2025-11-24-120000/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Hardlinks + neue Dateien<br>
+<strong>02:05:00</strong> – RTB fertig ✓<br>
+<br>
+<strong>02:05:01</strong> – wrapper_pcloud_sync_1to1.sh STARTS (automatisch)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pCloud Preflight: OK?<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Safety-delay 120s (warte nach RTB)<br>
+<strong>02:07:00</strong> – Manifest generieren (SHA256)<br>
+<strong>02:10:00</strong> – Push zu pCloud (nur NEW/CHANGED)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;content_index.json aktualisieren<br>
+<strong>02:15:00</strong> – pCloud-Sync fertig ✓<br>
+<br>
+<strong>02:15:01</strong> – Lock RELEASED (/run/backup_pipeline.lock)<br>
+<strong>02:15:02</strong> – rtb_wrapper.sh EXIT 0 (SUCCESS)<br>
+<br>
+<strong>═══ PIPELINE COMPLETE ═══</strong>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="diagram-container">
+            <h2>🎨 Legende & Symbole</h2>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-label">🟢 GREEN</div>
+                    <div class="legend-desc">Safety-Gate OK, Backup erlaubt</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">🟡 YELLOW</div>
+                    <div class="legend-desc">Warnung, Strict-Mode blockiert</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">🔴 RED</div>
+                    <div class="legend-desc">Ransomware/Viren, ABORT</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">🔒 LOCK</div>
+                    <div class="legend-desc">Verhindert Parallelität (2h Timeout)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">⏭️ SKIP</div>
+                    <div class="legend-desc">Graceful Exit, kein Fehler</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">❌ ABORT</div>
+                    <div class="legend-desc">Fehler, Exit non-zero</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">▶️ START</div>
+                    <div class="legend-desc">Prozess initiiert</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">✅ OK</div>
+                    <div class="legend-desc">Erfolgreich abgeschlossen</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Insights -->
+        <div class="diagram-container">
+            <h2>💡 Wichtigste Erkenntnisse</h2>
+
+            <div class="success-box">
+                <strong>✅ 1. Zwei Gating-Ebenen verhindern sinnlose RTBs:</strong>
+                <ul>
+                    <li>Safety-Gate (GREEN check) verhindert Ransomware-Backups</li>
+                    <li>rsync dry-run (Änderungen check) verhindert leere Snapshots</li>
+                </ul>
+            </div>
+
+            <div class="success-box">
+                <strong>✅ 2. Shared Lock = kein Backup-Chaos:</strong>
+                <ul>
+                    <li>Selbes Lockfile für RTB + pCloud-Sync</li>
+                    <li>Maximale Wartezeit: 2 Stunden</li>
+                    <li>Verhindert überlappende Uploads oder mehrfache RTBs</li>
+                </ul>
+            </div>
+
+            <div class="success-box">
+                <strong>✅ 3. Automatische Verkettung = Zuverlässigkeit:</strong>
+                <ul>
+                    <li>pCloud-Sync startet AUTOMATISCH nach erfolgreichem RTB</li>
+                    <li>Kein extra Timer nötig</li>
+                    <li>Lock wird erst freigegeben, wenn beide durch sind</li>
+                </ul>
+            </div>
+
+            <div class="success-box">
+                <strong>✅ 4. Intelligente pCloud-Sync:</strong>
+                <ul>
+                    <li>Bootstrap: Remote leer → alle Snapshots backfill</li>
+                    <li>Normalfall: Nur `/latest` Snapshot → nur NEW/CHANGED</li>
+                    <li>Preflight: Quota/Auth vor Upload prüfen</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ 5. Systemd statt Cron = Robustheit:</strong>
+                <ul>
+                    <li>Systemd Timers sind zeitzonenaware</li>
+                    <li>Persistent=true = macht verpasste Timer nach Reboot nach</li>
+                    <li>Logging direkt ins Journal (journalctl)</li>
+                    <li>Dependencies (z.B. nach MariaDB Start)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>📖 <strong>Skripte:</strong> rtb_wrapper.sh | wrapper_pcloud_sync_1to1.sh | rsync_tmbackup.sh | safety_gate.sh</p>
+        <p>🔐 pCloud Backup Tools – Systemd-basiertes, robustes Backup-System mit Ransomware-Schutz</p>
+        <p>✨ Generiert mit Mermaid.js</p>
+    </footer>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+        mermaid.contentLoaded();
+    </script>
+</body>
+</html>

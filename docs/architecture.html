@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pCloudSync Architektur – System-Übersicht</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            color: #4a90e2;
+            text-shadow: 0 2px 10px rgba(74, 144, 226, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #a0a0a0;
+            margin-bottom: 20px;
+        }
+
+        .diagram-container {
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(74, 144, 226, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin-bottom: 40px;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid rgba(74, 144, 226, 0.1);
+        }
+
+        .legend {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(74, 144, 226, 0.1);
+            border-left: 4px solid #4a90e2;
+            border-radius: 8px;
+        }
+
+        .legend h3 {
+            color: #4a90e2;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .legend-item {
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            border-left: 3px solid;
+        }
+
+        .legend-item.local { border-left-color: #1976d2; }
+        .legend-item.virus { border-left-color: #d32f2f; }
+        .legend-item.cloud { border-left-color: #388e3c; }
+        .legend-item.safety { border-left-color: #f57f17; }
+
+        .legend-item strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .legend-item small {
+            color: #a0a0a0;
+            display: block;
+            line-height: 1.4;
+        }
+
+        .components {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .component-card {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(74, 144, 226, 0.2);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .component-card:hover {
+            background: rgba(74, 144, 226, 0.1);
+            border-color: #4a90e2;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.2);
+        }
+
+        .component-card h3 {
+            color: #4a90e2;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .component-icon {
+            font-size: 1.5rem;
+        }
+
+        .component-card p {
+            font-size: 0.95rem;
+            color: #c0c0c0;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .component-card ul {
+            margin-left: 20px;
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .component-card li {
+            margin: 5px 0;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(74, 144, 226, 0.2);
+            color: #808080;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1024px) {
+            h1 { font-size: 2rem; }
+            .diagram-container { padding: 20px; }
+            .mermaid { padding: 15px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔒 pCloudSync – System-Architektur</h1>
+            <p class="subtitle">Lokaler Speicher → Virenscanning → pCloud Backup</p>
+        </header>
+
+        <div class="diagram-container">
+            <svg viewBox="0 0 1200 650" xmlns="http://www.w3.org/2000/svg" style="width: 100%; max-width: 1200px; margin: 0 auto; display: block;">
+                <!-- Define gradients -->
+                <defs>
+                    <linearGradient id="grad-local" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#1976d2;stop-opacity:0.9" />
+                        <stop offset="100%" style="stop-color:#0d47a1;stop-opacity:0.9" />
+                    </linearGradient>
+                    <linearGradient id="grad-virus" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#d32f2f;stop-opacity:0.9" />
+                        <stop offset="100%" style="stop-color:#b71c1c;stop-opacity:0.9" />
+                    </linearGradient>
+                    <linearGradient id="grad-cloud" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#388e3c;stop-opacity:0.9" />
+                        <stop offset="100%" style="stop-color:#1b5e20;stop-opacity:0.9" />
+                    </linearGradient>
+                </defs>
+
+                <!-- LEFT BOX: Local Storage -->
+                <rect x="20" y="20" width="280" height="600" fill="url(#grad-local)" stroke="#fff" stroke-width="2" rx="8" opacity="0.15"/>
+                <text x="160" y="50" text-anchor="middle" font-size="18" font-weight="bold" fill="#4a90e2">📁 Local Storage</text>
+                
+                <!-- Local Storage - Layers -->
+                <rect x="35" y="80" width="250" height="75" fill="rgba(25,118,210,0.3)" stroke="#4a90e2" stroke-width="1.5" rx="4"/>
+                <text x="160" y="107" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">NAS</text>
+                <text x="160" y="125" text-anchor="middle" font-size="11" fill="#c0c0c0">📁 Datenquelle</text>
+                <text x="160" y="138" text-anchor="middle" font-size="10" fill="#a0a0a0">(Data Source)</text>
+
+                <path d="M 160 155 L 160 190" stroke="#4a90e2" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                <rect x="35" y="190" width="250" height="60" fill="rgba(211,47,47,0.6)" stroke="#d32f2f" stroke-width="2.5" rx="4"/>
+                <text x="160" y="215" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">🛡️ safety_gate.sh</text>
+                <text x="160" y="238" text-anchor="middle" font-size="9" fill="#e0e0e0">(Ready Check)</text>
+
+                <path d="M 160 250 L 160 290" stroke="#4a90e2" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                <rect x="35" y="290" width="250" height="75" fill="rgba(123,31,162,0.3)" stroke="#7b1fa2" stroke-width="1.5" rx="4"/>
+                <text x="160" y="317" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">RTB Backup</text>
+                <text x="160" y="337" text-anchor="middle" font-size="11" fill="#c0c0c0">⏱️ Time-Machine</text>
+                <text x="160" y="350" text-anchor="middle" font-size="10" fill="#a0a0a0">(Snapshots)</text>
+
+                <rect x="35" y="405" width="250" height="80" fill="rgba(230,81,0,0.3)" stroke="#e65100" stroke-width="1.5" rx="4"/>
+                <text x="160" y="432" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">OS</text>
+                <text x="160" y="452" text-anchor="middle" font-size="11" fill="#c0c0c0">🖥️ System Files</text>
+                <text x="160" y="467" text-anchor="middle" font-size="10" fill="#a0a0a0">(Config & Logs)</text>
+
+                <!-- CENTER BOX: safety_gate.sh (outer protection frame) -->
+                <rect x="360" y="20" width="280" height="600" fill="url(#grad-virus)" stroke="#fff" stroke-width="2" rx="8" opacity="0.2"/>
+                <text x="500" y="50" text-anchor="middle" font-size="18" font-weight="bold" fill="#d32f2f">🛡️ safety_gate.sh</text>
+                
+                <!-- Inner frame: Virus Scanning (EntropyWatcher + ClamAV) -->
+                <rect x="375" y="75" width="250" height="265" fill="rgba(20,20,40,0.3)" stroke="#388e3c" stroke-width="2" rx="6"/>
+                <text x="500" y="96" text-anchor="middle" font-size="11" font-weight="bold" fill="#388e3c">🦠 Virus Scanning</text>
+                
+                <!-- Virus Scanning - Components -->
+                <rect x="385" y="110" width="230" height="100" fill="rgba(56,142,60,0.3)" stroke="#388e3c" stroke-width="1.5" rx="4"/>
+                <text x="500" y="140" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">👁️ EntropyWatcher</text>
+                <text x="500" y="160" text-anchor="middle" font-size="10" fill="#c0c0c0">Scan Monitor</text>
+                <text x="500" y="175" text-anchor="middle" font-size="10" fill="#c0c0c0">Health Check</text>
+                <text x="500" y="190" text-anchor="middle" font-size="9" fill="#a0a0a0">(Frequency: 60min)</text>
+
+                <rect x="385" y="220" width="230" height="100" fill="rgba(194,24,91,0.4)" stroke="#c2185b" stroke-width="1.5" rx="4"/>
+                <text x="500" y="250" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">🔍 ClamAV</text>
+                <text x="500" y="270" text-anchor="middle" font-size="10" fill="#c0c0c0">Virus Scanner</text>
+                <text x="500" y="285" text-anchor="middle" font-size="10" fill="#c0c0c0">Threat Detection</text>
+                <text x="500" y="300" text-anchor="middle" font-size="9" fill="#a0a0a0">(Frequency: 24h)</text>
+                
+                <!-- Label for inner frame -->
+                <text x="500" y="355" text-anchor="middle" font-size="10" fill="#a0a0a0">Scanning Components</text>
+
+                <!-- Status circle in center -->
+                <circle cx="500" cy="470" r="45" fill="rgba(255,255,255,0.1)" stroke="#4a90e2" stroke-width="2"/>
+                <text x="500" y="465" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a90e2">Status</text>
+                <text x="500" y="485" text-anchor="middle" font-size="11" fill="#fff">OK / FAIL</text>
+
+                <!-- Arrows to status -->
+                <path d="M 460 340 Q 480 400 490 425" stroke="#4a90e2" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
+                <path d="M 540 340 Q 520 400 510 425" stroke="#4a90e2" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
+
+
+
+
+
+                <!-- RIGHT BOX: pCloudSync -->
+                <rect x="700" y="20" width="280" height="600" fill="url(#grad-cloud)" stroke="#fff" stroke-width="2" rx="8" opacity="0.15"/>
+                <text x="840" y="50" text-anchor="middle" font-size="18" font-weight="bold" fill="#4a90e2">☁️ pCloudSync</text>
+
+                <!-- pCloudSync - safety_gate.sh before Create Manifest -->
+                <rect x="715" y="80" width="250" height="60" fill="rgba(211,47,47,0.6)" stroke="#d32f2f" stroke-width="2.5" rx="4"/>
+                <text x="840" y="105" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">🛡️ safety_gate.sh</text>
+                <text x="840" y="120" text-anchor="middle" font-size="9" fill="#e0e0e0">(Ready Check)</text>
+
+                <path d="M 840 140 L 840 185" stroke="#4a90e2" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                <!-- pCloudSync - Create Manifest -->
+                <rect x="715" y="185" width="250" height="80" fill="rgba(2,119,189,0.4)" stroke="#0277bd" stroke-width="1.5" rx="4"/>
+                <text x="840" y="215" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">📋 Create Manifest</text>
+                <text x="840" y="235" text-anchor="middle" font-size="10" fill="#c0c0c0">content_index.json</text>
+                <text x="840" y="250" text-anchor="middle" font-size="9" fill="#a0a0a0">(Deduplication)</text>
+
+                <path d="M 840 265 L 840 310" stroke="#4a90e2" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                <rect x="715" y="310" width="250" height="80" fill="rgba(85,139,47,0.4)" stroke="#558b2f" stroke-width="1.5" rx="4"/>
+                <text x="840" y="340" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">⬆️ Upload to pCloud</text>
+                <text x="840" y="360" text-anchor="middle" font-size="10" fill="#c0c0c0">Push Manifest + Stubs</text>
+                <text x="840" y="375" text-anchor="middle" font-size="9" fill="#a0a0a0">(Sync with Stubs)</text>
+
+                <rect x="715" y="435" width="250" height="80" fill="rgba(245,127,23,0.4)" stroke="#f57f17" stroke-width="1.5" rx="4"/>
+                <text x="840" y="465" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">⬇️ Restore</text>
+                <text x="840" y="485" text-anchor="middle" font-size="10" fill="#c0c0c0">Download from pCloud</text>
+                <text x="840" y="500" text-anchor="middle" font-size="9" fill="#a0a0a0">(Flat & Object-Store)</text>
+
+                <!-- Arrow definitions -->
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" fill="#4a90e2"/>
+                    </marker>
+                </defs>
+
+
+
+                <!-- Red arrow marker definition -->
+                <defs>
+                    <marker id="arrowhead-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" fill="#d32f2f"/>
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+
+        <div class="legend">
+            <h3>📌 Legende & Komponenten</h3>
+            <div class="legend-items">
+                <div class="legend-item local">
+                    <strong>🏠 Local Storage</strong>
+                    <small>Drei Schichten: NAS (Daten) → RTB (Backups) → OS (System)<br/>
+                    Geschützt durch safety_gate.sh als Schutzwand</small>
+                </div>
+                <div class="legend-item virus">
+                    <strong>🛡️ safety_gate.sh</strong>
+                    <small>Schutzwände zwischen allen Schichten<br/>
+                    Kontrolliert Datenfluss und Status</small>
+                </div>
+                <div class="legend-item virus">
+                    <strong>🦠 Virus Scanning</strong>
+                    <small>EntropyWatcher: kontinuierliche Überwachung<br/>
+                    ClamAV: aktive Bedrohungserkennung</small>
+                </div>
+                <div class="legend-item cloud">
+                    <strong>☁️ pCloudSync</strong>
+                    <small>Manifest-Erstellung → Upload → Restore<br/>
+                    Deduplizierung, Stub-Sync, Integrity Checks</small>
+                </div>
+            </div>
+        </div>
+
+        <h2 style="color: #4a90e2; margin-top: 50px; margin-bottom: 20px;">🔧 Komponenten im Detail</h2>
+        <div class="components">
+            <div class="component-card">
+                <h3><span class="component-icon">📁</span> Local Storage</h3>
+                <p><strong>NAS:</strong> Primäre Datenquelle</p>
+                <p><strong>RTB:</strong> Time-Machine Backups mit Snapshots</p>
+                <p><strong>OS:</strong> System & Konfigurationsdateien</p>
+                <p style="color: #f57f17; font-weight: bold; margin-top: 10px;">✓ Geschützt durch safety_gate.sh</p>
+            </div>
+
+            <div class="component-card">
+                <h3><span class="component-icon">👁️</span> EntropyWatcher</h3>
+                <p>Kontinuierliche Scan-Überwachung</p>
+                <ul>
+                    <li>Erfasst letzte Scan-Zeiten</li>
+                    <li>Prüft Scan-Frequenzen</li>
+                    <li>Speichert Metriken in DB</li>
+                    <li>Liefert Health-Status</li>
+                </ul>
+            </div>
+
+            <div class="component-card">
+                <h3><span class="component-icon">🔍</span> ClamAV</h3>
+                <p>Aktive Virenscanning & Threat Detection</p>
+                <ul>
+                    <li>Vollständige Dateiprüfung</li>
+                    <li>Echtzeit-Alerts</li>
+                    <li>Threat-Datenbank aktuell</li>
+                    <li>Integration mit safety_gate</li>
+                </ul>
+            </div>
+
+            <div class="component-card">
+                <h3><span class="component-icon">🛡️</span> safety_gate.sh</h3>
+                <p>Zentrale Schutzwand & Orchestration</p>
+                <ul>
+                    <li>Startet mit Systemstart</li>
+                    <li>Prüft Service-Status</li>
+                    <li>Entscheidet über Freigaben</li>
+                    <li>Verhindert ungesicherte Backups</li>
+                </ul>
+            </div>
+
+            <div class="component-card">
+                <h3><span class="component-icon">📋</span> Manifest Manager</h3>
+                <p>Erstellt deduplizierte Indizes</p>
+                <ul>
+                    <li>SHA256-Deduplizierung</li>
+                    <li>Content-Index Erstellung</li>
+                    <li>Snapshot-Verwaltung</li>
+                    <li>Integrity Checksums</li>
+                </ul>
+            </div>
+
+            <div class="component-card">
+                <h3><span class="component-icon">☁️</span> pCloudSync</h3>
+                <p>Bidirektionale Sync & Restore</p>
+                <ul>
+                    <li>Manifest zu pCloud pushen</li>
+                    <li>Snapshots mit Stubs synchro</li>
+                    <li>Flat & Object-Store Mode</li>
+                    <li>Selective Restore</li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p>pCloudSync Architecture Diagram • Alle Komponenten kommunizieren über ENV-Variablen & systemd-Timer</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+        mermaid.contentLoaded();
+    </script>
+</body>
+</html>

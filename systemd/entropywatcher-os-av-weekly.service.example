@@ -1,0 +1,33 @@
+# /etc/systemd/system/entropywatcher-os-av-weekly.service
+
+[Unit]
+Description=EntropyWatcher ClamAV Scan (OS weekly fuller scope)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=<USER>
+Group=<GROUP>
+WorkingDirectory=/opt/apps/entropywatcher
+Environment=PYTHONNOUSERSITE=1
+
+SyslogIdentifier=ew-os-av-weekly
+
+#Environment=LOG_FILE=/var/log/entropywatcher/entropywatcher-os-av-weekly.log
+#Environment=LOG_LEVEL=INFO
+
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+# optional (cgroups v2 / Debian 12):
+# IOWeight=50
+# CPUWeight=10
+
+# lade deine Projekt-.env zusätzlich zur python-dotenv (praktisch für Mail/Timerläufe)
+EnvironmentFile=/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=/opt/apps/entropywatcher/config/os-av-weekly.env
+
+# Full-Scan
+ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
+TimeoutStartSec=4h

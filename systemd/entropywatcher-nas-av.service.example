@@ -1,0 +1,32 @@
+[Unit]
+Description=EntropyWatcher ClamAV Scan Hot Paths
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/srv/nas
+
+[Service]
+SyslogIdentifier=ew-nas-av-hot
+
+Type=oneshot
+User=<USER>
+Group=<GROUP>
+WorkingDirectory=/opt/apps/entropywatcher
+Environment=PYTHONNOUSERSITE=1
+EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=-/opt/apps/entropywatcher/config/nas-av.env
+
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+# optional (cgroups v2 / Debian 12):
+# IOWeight=50
+# CPUWeight=10
+
+
+# Hot-Pfade scannen:
+ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
+
+TimeoutStartSec=4h
+
+[Install]
+WantedBy=multi-user.target

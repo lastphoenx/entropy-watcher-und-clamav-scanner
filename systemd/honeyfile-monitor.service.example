@@ -1,0 +1,20 @@
+[Unit]
+Description=Honeyfile Monitor - Check for intrusion attempts
+Documentation=man:ausearch(8) file:///opt/apps/entropywatcher/docs/honeyfiles.md
+After=auditd.service
+Requires=auditd.service
+ConditionPathExists=/opt/apps/entropywatcher/main/honeyfile_monitor.sh
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/apps/entropywatcher/main/honeyfile_monitor.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=honeyfile-monitor
+
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target

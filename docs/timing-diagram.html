@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pCloud Backup – Timing Diagram (Präzise)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: #0a0e27;
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        .container {
+            max-width: 2000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid #4ac8ae;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #4ac8ae;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 0.95rem;
+        }
+
+        .diagram {
+            background: #1a1a2e;
+            border: 1px solid #4ac8ae;
+            border-radius: 8px;
+            padding: 0;
+            overflow-x: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .timeline {
+            display: flex;
+            min-width: fit-content;
+        }
+
+        .time-column {
+            flex-shrink: 0;
+            width: 60px;
+            border-right: 2px solid #4ac8ae;
+            background: #0f0f1e;
+            padding: 0;
+        }
+
+        .time-label {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #4ac8ae;
+            border-bottom: 1px solid #333;
+        }
+
+        .time-tick {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: #666;
+            border-bottom: 1px dashed #333;
+        }
+
+        .components {
+            display: flex;
+            flex-shrink: 0;
+        }
+
+        .component {
+            flex-shrink: 0;
+            width: 150px;
+            border-right: 2px solid #333;
+        }
+
+        .component-header {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            background: linear-gradient(135deg, #1a3a3a 0%, #0f2a2a 100%);
+            border-bottom: 2px solid #4ac8ae;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 10px;
+            min-height: 60px;
+            color: #4ac8ae;
+            flex-wrap: wrap;
+        }
+
+        .component-line {
+            flex: 1;
+            border-left: 2px dashed #4ac8ae;
+            margin-left: 50%;
+            position: relative;
+        }
+
+        .event {
+            position: relative;
+            margin: 0;
+            padding: 0;
+        }
+
+        .event-box {
+            position: absolute;
+            left: -70px;
+            width: 140px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-align: center;
+            border: 1px solid;
+            font-weight: 500;
+            z-index: 10;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.2;
+        }
+
+        .event-action {
+            background: #2a5a5a;
+            border-color: #4ac8ae;
+            color: #4ac8ae;
+        }
+
+        .event-decision-green {
+            background: #2d5a2d;
+            border-color: #4caf50;
+            color: #4caf50;
+        }
+
+        .event-decision-red {
+            background: #5a2d2d;
+            border-color: #ff5252;
+            color: #ff5252;
+        }
+
+        .event-decision-yellow {
+            background: #5a5a2d;
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+
+        .event-row {
+            display: flex;
+            min-width: fit-content;
+        }
+
+        .time-cell {
+            width: 60px;
+            border-bottom: 1px dashed #333;
+            flex-shrink: 0;
+        }
+
+        .component-cell {
+            width: 150px;
+            height: 50px;
+            border-bottom: 1px dashed #333;
+            border-right: 1px solid #333;
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4ac8ae;
+            z-index: 5;
+        }
+
+        .arrow {
+            position: absolute;
+            height: 2px;
+            background: #ff9800;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+        }
+
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid #ff9800;
+            border-top: 3px solid transparent;
+            border-bottom: 3px solid transparent;
+        }
+
+        .arrow-label {
+            position: absolute;
+            font-size: 0.7rem;
+            background: #1a1a2e;
+            padding: 2px 4px;
+            color: #ff9800;
+            font-weight: bold;
+            top: -12px;
+            white-space: nowrap;
+        }
+
+        .time-label-big {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #4ac8ae;
+            padding: 20px 0 10px 0;
+            text-align: center;
+            border-top: 2px solid #4ac8ae;
+            margin-top: 10px;
+        }
+
+        .section-label {
+            position: absolute;
+            left: 70px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #ffc107;
+            background: #1a1a2e;
+            padding: 2px 6px;
+            border: 1px solid #ffc107;
+            border-radius: 3px;
+            z-index: 20;
+        }
+
+        .legend {
+            margin-top: 30px;
+            padding: 20px;
+            background: #1a1a2e;
+            border: 1px solid #4ac8ae;
+            border-radius: 8px;
+        }
+
+        .legend h3 {
+            color: #4ac8ae;
+            margin-bottom: 15px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .legend-item {
+            padding: 10px;
+            background: rgba(74, 200, 174, 0.1);
+            border-left: 3px solid #4ac8ae;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .legend-label {
+            font-weight: bold;
+            color: #4ac8ae;
+            margin-bottom: 5px;
+        }
+
+        .legend-desc {
+            color: #a0a0a0;
+            font-size: 0.8rem;
+        }
+
+        .info-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: #1a1a2e;
+            border: 1px solid #4ac8ae;
+            border-radius: 8px;
+        }
+
+        .info-section h3 {
+            color: #4ac8ae;
+            margin-bottom: 15px;
+        }
+
+        .info-section p {
+            color: #e0e0e0;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        code {
+            background: #0a0e27;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #4ac8ae;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .critical {
+            background: rgba(255, 82, 82, 0.1);
+            border-left: 3px solid #ff5252;
+            color: #ff5252;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #4ac8ae;
+            color: #808080;
+            font-size: 0.85rem;
+        }
+
+        .row-label {
+            position: absolute;
+            left: -55px;
+            font-size: 0.75rem;
+            color: #ffc107;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔒 pCloud Backup – Timing Diagram (Präzise)</h1>
+            <div class="subtitle">Systemd Services, Lock-Mechanik & Sequenzablauf</div>
+        </header>
+
+        <div class="diagram">
+            <div class="timeline">
+                <!-- Time Column -->
+                <div class="time-column">
+                    <div class="time-label">TIME</div>
+                    <div class="time-tick">00:00</div>
+                    <div class="time-tick">00:30</div>
+                    <div class="time-tick">01:00</div>
+                    <div class="time-tick">01:30</div>
+                    <div class="time-tick">02:00</div>
+                    <div class="time-tick">02:05</div>
+                    <div class="time-tick">02:10</div>
+                    <div class="time-tick">02:15</div>
+                    <div class="time-tick">02:20</div>
+                    <div class="time-tick">02:25</div>
+                    <div class="time-tick">02:30</div>
+                    <div class="time-tick">02:35</div>
+                    <div class="time-tick">03:00</div>
+                </div>
+
+                <!-- Components -->
+                <div class="components">
+                    <!-- Component 1: Systemd Timer -->
+                    <div class="component">
+                        <div class="component-header">Systemd<br/>Timer</div>
+                        <div class="component-line">
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="dot" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                                <div class="event-box event-action" style="top: -30px;">🔔 Timer Fires<br/>02:00 AM</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="arrow" style="width: 60px; top: 50%; left: 150%;"></div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Component 2: RTB Wrapper -->
+                    <div class="component">
+                        <div class="component-header">RTB<br/>Wrapper</div>
+                        <div class="component-line">
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="dot" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                                <div class="event-box event-action" style="top: -20px;">START</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: 0px; left: -85px; width: 170px;">⛔ Lock Check<br/>Try: acquire</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: 0px; left: -85px; width: 170px;">Safety-Gate<br/>Query Status</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: -30px;">⏱️ DRY-RUN<br/>Änderungen?</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: 0px; left: -85px; width: 170px;">▶️ RTB Start<br/>rsync_tmbackup</div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: 0px; left: -85px; width: 170px;">▶️ pCloud-Sync<br/>START</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: -30px;">✅ DONE<br/>Lock Release</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Component 3: Safety-Gate / MariaDB -->
+                    <div class="component">
+                        <div class="component-header">Safety-Gate<br/>(EntropyWatcher)</div>
+                        <div class="component-line">
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="dot" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                                <div class="arrow" style="width: 60px; top: 50%; left: 150%; transform: rotate(180deg);"></div>
+                                <div class="event-box event-decision-green" style="top: -30px;">🟢 GREEN<br/>OK</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="arrow" style="width: 60px; top: 50%; left: 150%; transform: rotate(180deg);"></div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Component 4: rsync_tmbackup -->
+                    <div class="component">
+                        <div class="component-header">rsync<br/>_tmbackup</div>
+                        <div class="component-line">
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="dot" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                                <div class="event-box event-action" style="top: -40px; left: -85px; width: 170px;">🔄 Snapshot<br/>Hardlinks<br/>Kopieren</div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: -20px;">✅ DONE</div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Component 5: Manifest / pCloud -->
+                    <div class="component">
+                        <div class="component-header">Manifest<br/>& pCloud</div>
+                        <div class="component-line">
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="dot" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                                <div class="event-box event-action" style="top: -40px; left: -85px; width: 170px;">SHA256<br/>Manifest<br/>Gen</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: 0px; left: -85px; width: 170px;">Upload<br/>NEW/CHANGED<br/>Dedup</div>
+                            </div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="event-box event-action" style="top: -30px;">✅ Done<br/>Index</div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Component 6: MariaDB -->
+                    <div class="component">
+                        <div class="component-header">MariaDB<br/>(Logs)</div>
+                        <div class="component-line">
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="arrow" style="width: 60px; top: 50%; left: -150%;"></div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px; position: relative;">
+                                <div class="dot" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                                <div class="event-box event-action" style="top: -30px;">📝 Log<br/>Success</div>
+                            </div>
+                            <div style="height: 50px;"></div>
+                            <div style="height: 50px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>📋 Detaillierter Ablauf (t=02:00 bis t=02:35)</h3>
+            <p><strong>02:00:00</strong> – Systemd Timer triggert <code>rtb_wrapper.sh</code></p>
+            <p><strong>02:00:01</strong> – Lock-Datei prüfen: <code>/run/backup_pipeline.lock</code></p>
+            <p style="margin-left: 20px; color: #4ac8ae;">✓ Lock erfolgreich acquired (Verhindert Parallelität)</p>
+            
+            <p><strong>02:00:02</strong> – Safety-Gate Check: <code>safety_gate.sh --strict</code></p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Query MariaDB: flagged=0, av_findings=0, age_min ok?</p>
+            <p style="margin-left: 20px; color: #4caf50;">✓ GREEN (Exit 0) – Backup erlaubt</p>
+            
+            <p><strong>02:00:05</strong> – Dry-Run Check: rsync vergleicht SRC vs latest</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ <code>rsync -ni --delete /srv/nas/ latest/ | grep -q '^[&lt;>ch*]'</code></p>
+            <p style="margin-left: 20px; color: #4caf50;">✓ Änderungen erkannt → RTB läuft</p>
+            
+            <p><strong>02:00:06</strong> – RTB (rsync_tmbackup.sh) STARTS</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Erstellt Snapshot: <code>/mnt/backup/rtb_nas/2025-11-24-120000/</code></p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Hardlinks für unveränderte Dateien</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Latest symlink aktualisiert</p>
+            
+            <p><strong>02:20:00</strong> – RTB FERTIG (Exit 0)</p>
+            <p style="margin-left: 20px; color: #4caf50;">✓ Snapshot erfolgreich</p>
+            
+            <p><strong>02:20:05</strong> – pCloud-Sync START (Automatisch, Lock NOCH GEHALTEN!)</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Preflight: Quota/Auth/Reachability Check</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Safety-Delay 120s (warte nach RTB)</p>
+            
+            <p><strong>02:22:00</strong> – Manifest generieren (SHA256 pro Datei)</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ <code>pcloud_json_manifest.py</code></p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Output: <code>manifest.json</code> mit allen Hashes</p>
+            
+            <p><strong>02:25:00</strong> – Upload zu pCloud mit Deduplication</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Prüfe <code>content_index.json</code></p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Nur NEW/CHANGED hochladen (85% Ersparnis!)</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ content_index.json aktualisieren</p>
+            
+            <p><strong>02:35:00</strong> – pCloud-Sync FERTIG (Exit 0)</p>
+            <p style="margin-left: 20px; color: #4caf50;">✓ Upload erfolgreich</p>
+            
+            <p><strong>02:35:01</strong> – Log Eintrag in MariaDB</p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ Pipeline Success</p>
+            
+            <p><strong>02:35:02</strong> – Lock RELEASED</p>
+            <p style="margin-left: 20px; color: #4caf50;">✓ Pipeline komplett!</p>
+        </div>
+
+        <div class="info-section">
+            <h3>🔀 Alternativ: Fehlerszenarien</h3>
+            <p><strong style="color: #ff5252;">Scenario 1: Safety-Gate RED</strong></p>
+            <p style="margin-left: 20px;">02:00:02 – Ransomware erkannt (flagged&gt;0)</p>
+            <p style="margin-left: 20px; color: #ff5252;">→ Exit 2 (RED) – ABORT!</p>
+            <p style="margin-left: 20px; color: #ff5252;">→ RTB & pCloud überspringen</p>
+            <p style="margin-left: 20px; color: #ff5252;">→ Lock released, Alert Admin</p>
+            
+            <p style="margin-top: 15px;"><strong style="color: #ffc107;">Scenario 2: Keine Änderungen</strong></p>
+            <p style="margin-left: 20px;">02:00:05 – DRY-RUN: Keine Matches (kein &lt;>ch*)</p>
+            <p style="margin-left: 20px; color: #ffc107;">→ RTB überspringen (NO_CHANGE_EXIT0=1)</p>
+            <p style="margin-left: 20px; color: #ffc107;">→ Lock released (Exit 0 – graceful)</p>
+            
+            <p style="margin-top: 15px;"><strong style="color: #ffc107;">Scenario 3: Lock busy</strong></p>
+            <p style="margin-left: 20px;">02:00:01 – Kann Lock nicht in 2h akquirieren</p>
+            <p style="margin-left: 20px; color: #ffc107;">→ EXIT 0 (skip) – verhindert Deadlock</p>
+        </div>
+
+        <div class="info-section critical">
+            <h3>⚠️ Kritische Punkte</h3>
+            <p><strong>1. Shared Lock</strong> – Selbes Lockfile für RTB & pCloud verhindert Parallelität</p>
+            <p><strong>2. Zwei Gating-Ebenen</strong> – Safety-Gate + DRY-RUN = doppelte Absicherung</p>
+            <p><strong>3. Automatische Verkettung</strong> – pCloud startet sofort nach RTB, Lock NOCH gehalten</p>
+            <p><strong>4. Graceful Timeouts</strong> – Lock Timeout 2h, kein Hard-Abort, immer LOCKFILE released</p>
+            <p><strong>5. DB-Konsistenz</strong> – Alle Events werden geloggt (MariaDB) für Audit Trail</p>
+        </div>
+
+        <div class="legend">
+            <h3>🎨 Legende</h3>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-label">🔔 Timer Fires</div>
+                    <div class="legend-desc">Systemd Timer triggert Service (2:00 AM)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">⛔ Lock Check</div>
+                    <div class="legend-desc">Acquire /run/backup_pipeline.lock (max 2h wait)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">🟢 GREEN</div>
+                    <div class="legend-desc">Safety-Gate OK, Backup erlaubt</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">🟡 YELLOW</div>
+                    <div class="legend-desc">Warning (strict=1 blockiert trotzdem)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">🔴 RED</div>
+                    <div class="legend-desc">Ransomware/Viren erkannt, ABORT</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">⏱️ DRY-RUN</div>
+                    <div class="legend-desc">rsync -ni Check für Änderungen</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">▶️ START</div>
+                    <div class="legend-desc">Prozess beginnt</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-label">✅ DONE</div>
+                    <div class="legend-desc">Erfolgreich abgeschlossen</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>📖 Basierend auf: rtb_wrapper.sh | wrapper_pcloud_sync_1to1.sh | rsync_tmbackup.sh | safety_gate.sh</p>
+        <p>🔐 pCloud Backup Tools – Production-Grade System mit Ransomware-Schutz</p>
+    </footer>
+</body>
+</html>

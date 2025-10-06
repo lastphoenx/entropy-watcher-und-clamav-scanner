@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pCloud Backup – Prozessflow & Architektur</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #4a90e2;
+            text-shadow: 0 2px 10px rgba(74, 144, 226, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #a0a0a0;
+            margin-bottom: 5px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            background: rgba(74, 144, 226, 0.1);
+            border: 2px solid rgba(74, 144, 226, 0.3);
+            color: #4a90e2;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button:hover {
+            background: rgba(74, 144, 226, 0.2);
+            border-color: #4a90e2;
+            transform: translateY(-2px);
+        }
+
+        .tab-button.active {
+            background: #4a90e2;
+            border-color: #4a90e2;
+            color: white;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        .content {
+            display: none;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(74, 144, 226, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .mermaid {
+            background: rgba(30, 30, 50, 0.5);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .info-box {
+            background: rgba(74, 144, 226, 0.1);
+            border-left: 4px solid #4a90e2;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .warning-box {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid #ff9800;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .success-box {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4caf50;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        h2 {
+            color: #4a90e2;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        h3 {
+            color: #7bb3ff;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+        }
+
+        th {
+            background: rgba(74, 144, 226, 0.15);
+            color: #4a90e2;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(74, 144, 226, 0.05);
+        }
+
+        .time {
+            font-weight: 600;
+            color: #ff9800;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(74, 144, 226, 0.2);
+            color: #808080;
+            font-size: 0.9rem;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .legend-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid #4a90e2;
+            border-radius: 4px;
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: #4a90e2;
+            margin-bottom: 5px;
+        }
+
+        .legend-desc {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="subtitle">🔒 Sicheres Backup-System mit Ransomware-Schutz</div>
+            <h1>pCloud Backup – Prozessflow & Systemarchitektur</h1>
+            <div class="subtitle">Visualisierung der Komponenten, Abläufe und Sicherheitsmechanismen</div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('daily-timeline')">📅 Täglicher Flow</button>
+            <button class="tab-button" onclick="switchTab('architecture')">🏗️ Systemarchitektur</button>
+            <button class="tab-button" onclick="switchTab('ransomware-defense')">🛡️ Ransomware-Abwehr</button>
+            <button class="tab-button" onclick="switchTab('data-flow')">🔄 Datenfluss</button>
+            <button class="tab-button" onclick="switchTab('multi-source')">📊 Multi-Source Setup</button>
+        </div>
+
+        <!-- Tab 1: Täglicher Flow -->
+        <div id="daily-timeline" class="content active">
+            <h2>📅 Täglicher Backup-Flow (Sequence)</h2>
+            
+            <div class="info-box">
+                <strong>Ablauf:</strong> Vom RTB-Snapshot über Manifest-Erstellung, Sicherheitsprüfung bis zum intelligenten Upload zu pCloud
+            </div>
+
+            <div class="mermaid">
+                sequenceDiagram
+                    participant Cron as Cron Timer
+                    participant RTB as RTB Snapshot
+                    participant SafeGate as Safety-Gate
+                    participant EW as EntropyWatcher
+                    participant Manifest as Manifest Gen
+                    participant Upload as pCloud Upload
+                    participant pCloud as pCloud Storage
+                    participant DB as MariaDB
+
+                    Cron->>RTB: 00:00 Start Snapshot
+                    RTB->>RTB: Hardlink-Optimierung
+                    RTB->>RTB: Dateibaum kopieren
+                    Cron->>SafeGate: 02:00 Sicherheit prüfen
+                    SafeGate->>Honey: 1. Honeyfiles prüfen (Pre-Check)
+                    alt Honeyfile Alarm (RED)
+                        Honey->>SafeGate: ❌ ALARM!
+                        SafeGate->>Cron: ❌ ABORT (System kompromittiert)
+                    else Honeyfiles OK
+                        SafeGate->>EW: 2a. Entropy NAS Status
+                        EW->>DB: Flagged Files
+                        DB->>SafeGate: Status NAS
+                        SafeGate->>EW: 2b. ClamAV NAS-AV Status
+                        EW->>DB: AV Findings
+                        DB->>SafeGate: Status NAS-AV
+                        Note over SafeGate: Worst-Case = OVERALL_STATUS
+                        
+                        alt Mind. 1 Service RED
+                            SafeGate->>Cron: ❌ ABORT
+                            Cron->>DB: Log: Backup blockiert
+                        else Alle Services GREEN
+                            SafeGate->>Manifest: Manifest generieren
+                            Manifest->>Manifest: SHA256 je Datei
+                            Manifest->>Upload: Manifest + Paths
+                            Upload->>pCloud: Content-Index prüfen
+                            Upload->>pCloud: Nur NEW/CHANGED hochladen
+                            pCloud->>DB: Update content_index.json
+                            pCloud->>Cron: ✅ FERTIG
+                        end
+                    end
+            </div>
+
+            <h3>⏱️ Zeitplan (am Beispiel NAS)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Zeit</th>
+                        <th>Komponente</th>
+                        <th>Aktion</th>
+                        <th>Dauer</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="time">00:00</td>
+                        <td>RTB (rsync_tmbackup.sh)</td>
+                        <td>Snapshot-Erstellung mit Hardlinks</td>
+                        <td>~60 min</td>
+                        <td>🔄 Läuft</td>
+                    </tr>
+                    <tr>
+                        <td class="time">01:00</td>
+                        <td>RTB</td>
+                        <td>Snapshot fertig</td>
+                        <td>—</td>
+                        <td>✅ OK</td>
+                    </tr>
+                    <tr>
+                        <td class="time">:00</td>
+                        <td>EntropyWatcher (stündlich)</td>
+                        <td>Delta-Scan /srv/nas</td>
+                        <td>~20 min</td>
+                        <td>🔄 Läuft</td>
+                    </tr>
+                    <tr>
+                        <td class="time">02:00</td>
+                        <td>safety_gate.sh</td>
+                        <td>Status prüfen (GREEN/RED?)</td>
+                        <td>~5 sec</td>
+                        <td>✅ OK</td>
+                    </tr>
+                    <tr>
+                        <td class="time">02:05</td>
+                        <td>pcloud_json_manifest.py</td>
+                        <td>SHA256 je Datei berechnen</td>
+                        <td>~10 min</td>
+                        <td>🔄 Läuft</td>
+                    </tr>
+                    <tr>
+                        <td class="time">02:15</td>
+                        <td>pcloud_push_json_manifest...</td>
+                        <td>Upload nur NEW/CHANGED</td>
+                        <td>~30-60 min</td>
+                        <td>🔄 Läuft</td>
+                    </tr>
+                    <tr>
+                        <td class="time">03:00</td>
+                        <td>Backup-Pipeline</td>
+                        <td>Fertig ✅</td>
+                        <td>—</td>
+                        <td>✅ COMPLETE</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="success-box">
+                <strong>💾 Ergebnis:</strong> 100 GB Snapshot-Daten, aber nur 5-20 GB zu pCloud hochgeladen dank Content-Deduplication (85% Ersparnis!)
+            </div>
+        </div>
+
+        <!-- Tab 2: Systemarchitektur -->
+        <div id="architecture" class="content">
+            <h2>🏗️ Systemarchitektur (High-Level)</h2>
+
+            <div class="info-box">
+                <strong>Kern-Komponenten:</strong> Drei Hauptsysteme arbeiten zusammen für sichere, effiziente Backups
+            </div>
+
+            <div class="mermaid">
+                graph TB
+                    subgraph Quellen["📁 Datenquellen"]
+                        NAS["🖥️ /srv/nas<br/>(User1/User2/User3)"]
+                        OS["🖥️ /root, /home<br/>(OS-Dateien)"]
+                    end
+
+                    subgraph Backup["💾 Snapshot-Layer (RTB)"]
+                        RTB["rsync-time-backup<br/>/mnt/backup/rtb_nas/"]
+                        Hardlinks["🔗 Hardlinks<br/>(Deduplikation lokal)"]
+                    end
+
+                    subgraph Security["🛡️ Sicherheit (EntropyWatcher)"]
+                        Entropy["📊 Entropie-Analyse<br/>(Shannon-Entropie)"]
+                        ClamAV["🦠 ClamAV<br/>(Signatur-Scanning)"]
+                        Gate["⛔ Safety-Gate<br/>(GREEN/YELLOW/RED)"]
+                    end
+
+                    subgraph Upload["☁️ pCloud Upload"]
+                        Manifest["📋 Manifest-Gen<br/>(SHA256-Hash)"]
+                        Dedup["🎯 Deduplication<br/>(content_index.json)"]
+                        Push["⬆️ Smart-Upload<br/>(nur NEW)"]
+                    end
+
+                    subgraph Storage["☁️ pCloud Storage"]
+                        pCloud["📦 /Backup/rtb_1to1/<br/>_snapshots/"]
+                        Index["🗂️ content_index.json<br/>(Multi-Ref-Index)"]
+                    end
+
+                    subgraph Persistence["🗄️ Persistenz"]
+                        DB["MariaDB<br/>(History/Audit)"]
+                    end
+
+                    NAS --> RTB
+                    OS --> RTB
+                    RTB --> Hardlinks
+                    Hardlinks --> Entropy
+                    Entropy --> ClamAV
+                    ClamAV --> Gate
+                    Gate -->|GREEN| Manifest
+                    Gate -->|RED| DB
+                    Manifest --> Dedup
+                    Dedup --> Push
+                    Push --> pCloud
+                    Push --> Index
+                    pCloud --> Index
+                    Gate --> DB
+                    ClamAV --> DB
+                    Entropy --> DB
+
+                    style NAS fill:#2a3f5f
+                    style OS fill:#2a3f5f
+                    style Gate fill:#d32f2f,stroke:#ff5252,color:#fff
+                    style pCloud fill:#1976d2,stroke:#42a5f5,color:#fff
+                    style DB fill:#7b1fa2,stroke:#ab47bc,color:#fff
+            </div>
+
+            <h3>🔗 Komponenten-Zusammenfassung</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Komponente</th>
+                        <th>Aufgabe</th>
+                        <th>Input</th>
+                        <th>Output</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>RTB</strong></td>
+                        <td>Snapshot-Erstellung</td>
+                        <td>/srv/nas, /root</td>
+                        <td>Verzeichnisbaum mit Hardlinks</td>
+                    </tr>
+                    <tr>
+                        <td><strong>EntropyWatcher</strong></td>
+                        <td>Ransomware-Erkennung</td>
+                        <td>Dateibaum + Entropy-baselines</td>
+                        <td>Flagged Files, AV Findings in DB</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Safety-Gate</strong></td>
+                        <td>Backup-Gating</td>
+                        <td>DB-Status (flagged, av_findings)</td>
+                        <td>Exit 0 (GO) / 2 (STOP)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Manifest-Gen</strong></td>
+                        <td>SHA256-Metadaten</td>
+                        <td>Snapshot-Verzeichnis</td>
+                        <td>manifest.json (Hashes + Sizes)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>pCloud-Upload</strong></td>
+                        <td>Intelligenter Upload</td>
+                        <td>manifest.json + content_index</td>
+                        <td>Nur NEW/CHANGED hochgeladen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>MariaDB</strong></td>
+                        <td>Persistierung</td>
+                        <td>Scan-Ergebnisse</td>
+                        <td>History + Audit-Trail</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tab 3: Ransomware-Abwehr -->
+        <div id="ransomware-defense" class="content">
+            <h2>🛡️ Ransomware-Abwehr (Multi-Layer Defense)</h2>
+
+            <div class="warning-box">
+                <strong>🚨 Bedrohung:</strong> Ransomware verschlüsselt Dateien → Backups würden auch verschlüsselte Dateien enthalten
+            </div>
+
+            <div class="mermaid">
+                graph TD
+                    Attack["🦠 Ransomware-Angriff<br/>(verschlüsselt Dateien)"]
+                    
+                    Attack -->|Symptom 1| Entropy_Inc["📈 Entropie stark ↑<br/>(von 3.5 auf 7.9)"]
+                    Attack -->|Symptom 2| ClamAV_Hit["🦠 ClamAV detekt<br/>(Signatur-Match)"]
+                    Attack -->|Symptom 3| MTime_Change["⏰ Mtime sprunghaft<br/>(Millionen Änderungen)"]
+
+                    Entropy_Inc -->|Layer 1| EW_Flag["EntropyWatcher<br/>⚠️ Flagge HIGH ENTROPY"]
+                    ClamAV_Hit -->|Layer 2| ClamAV_Flag["ClamAV<br/>⚠️ Quarantäne + Alert"]
+                    MTime_Change -->|Layer 3| Quick_FP["Quick-Fingerprint<br/>❌ Verdacht auf Tamper"]
+
+                    EW_Flag --> DB_Write["📝 DB: flagged=1"]
+                    ClamAV_Flag --> DB_Write2["📝 DB: av_findings>0"]
+                    Quick_FP --> DB_Write3["📝 DB: suspicious=1"]
+
+                    DB_Write --> Gate_Check["⛔ Safety-Gate Check"]
+                    DB_Write2 --> Gate_Check
+                    DB_Write3 --> Gate_Check
+
+                    Gate_Check -->|flagged>0 OR av>0| RED["🔴 Status: RED"]
+                    
+                    RED -->|Backup versucht| Blocked["❌ BACKUP BLOCKIERT!"]
+                    Blocked -->|Ergebnis| Safe1["✅ Ransomware nicht in Backup!"]
+                    Blocked -->|Aktion| Quarantine["🔒 Datei in av-quarantine/"]
+                    Blocked -->|Alert| Email["📧 Admin Alert"]
+
+                    style Attack fill:#d32f2f,color:#fff
+                    style RED fill:#d32f2f,color:#fff
+                    style Blocked fill:#d32f2f,color:#fff
+                    style Safe1 fill:#4caf50,color:#fff
+                    style Quarantine fill:#ff9800,color:#fff
+                    style Email fill:#ff9800,color:#fff
+            </div>
+
+            <h3>🔍 Detection Schwellwerte</h3>
+            <div class="info-box">
+                <strong>ALERT_ENTROPY_ABS = 7.8 bits/byte</strong><br>
+                Typische Werte:
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li><strong>&lt;5.0</strong> – Text, Quellcode (niedrig)</li>
+                    <li><strong>5.0-7.0</strong> – Komprimierte Dateien (mittel)</li>
+                    <li><strong>≥7.8</strong> – Verschlüsselt/Random = ⚠️ ALARM</li>
+                </ul>
+            </div>
+
+            <h3>📊 Defense-Ebenen im Detail</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ebene</th>
+                        <th>Technologie</th>
+                        <th>Was wird erkannt</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1️⃣ Entropy</strong></td>
+                        <td>Shannon-Entropie (NumPy/ent)</td>
+                        <td>Plötzliches Encryption/Random</td>
+                        <td>Flag + DB Write</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2️⃣ Malware</strong></td>
+                        <td>ClamAV Signaturen</td>
+                        <td>Bekannte Viren/Trojaner</td>
+                        <td>Quarantäne + Alert</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3️⃣ Temporal</strong></td>
+                        <td>HEALTH_SAFEAGE_MIN</td>
+                        <td>Zu frische/verdächtige Änderungen</td>
+                        <td>YELLOW Status</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4️⃣ Fingerprint</strong></td>
+                        <td>Quick-FP (Head+Tail MD5)</td>
+                        <td>Mtime-Manipulation → neuer Inhalt</td>
+                        <td>Volle Re-Verifizierung</td>
+                    </tr>
+                    <tr>
+                        <td><strong>5️⃣ Gate</strong></td>
+                        <td>safety_gate.sh Exit-Code</td>
+                        <td>Aggregierter Status aller Checks</td>
+                        <td>❌ Backup BLOCKIERT</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="success-box">
+                <strong>✅ Resultat:</strong> Aktive Ransomware-Bedrohung wird erkannt BEVOR Backup läuft → verschlüsselte Dateien landen NICHT in pCloud!
+            </div>
+        </div>
+
+        <!-- Tab 4: Datenfluss -->
+        <div id="data-flow" class="content">
+            <h2>🔄 Datenfluss – Deduplication & Upload</h2>
+
+            <div class="info-box">
+                <strong>Intelligente Uploads:</strong> pCloud speichert Datei-Inhalte zentral, Snapshots verweisen via SHA256-Index
+            </div>
+
+            <div class="mermaid">
+                graph LR
+                    subgraph Snap1["Snapshot 1<br/>(23.11.2025)"]
+                        F1["📄 file1.txt<br/>SHA256: abc123"]
+                        F2["📄 file2.txt<br/>SHA256: def456"]
+                        P1["🖼️ photo.jpg<br/>SHA256: ghi789"]
+                    end
+
+                    subgraph Snap2["Snapshot 2<br/>(24.11.2025)"]
+                        F1_2["📄 file1.txt<br/>SHA256: abc123<br/>(unverändert)"]
+                        F2_2["📄 file2.txt<br/>SHA256: def456<br/>(unverändert)"]
+                        F3_2["📄 newfile.txt<br/>SHA256: jkl012<br/>(NEU)"]
+                        P2_2["🖼️ newphoto.jpg<br/>SHA256: mno345<br/>(NEU)"]
+                    end
+
+                    subgraph Upload1["Upload Snap1<br/>(100 GB)"]
+                        UP1["⬆️ abc123 (1 MB)<br/>⬆️ def456 (1 MB)<br/>⬆️ ghi789 (5 MB)"]
+                    end
+
+                    subgraph Upload2["Upload Snap2<br/>(nur 3 MB!)"]
+                        UP2["🔗 abc123 → STUB<br/>🔗 def456 → STUB<br/>⬆️ jkl012 (1 MB)<br/>⬆️ mno345 (2 MB)"]
+                    end
+
+                    subgraph Index["content_index.json"]
+                        IDX["abc123: {fileid: f123,<br/>refs: [Snap1/file1.txt,<br/>Snap2/file1.txt]}<br/><br/>def456: {fileid: f456,<br/>refs: [Snap1/file2.txt,<br/>Snap2/file2.txt]}"]
+                    end
+
+                    F1 --> UP1
+                    F2 --> UP1
+                    P1 --> UP1
+                    F1_2 --> UP2
+                    F2_2 --> UP2
+                    F3_2 --> UP2
+                    P2_2 --> UP2
+                    UP1 --> Index
+                    UP2 --> Index
+
+                    style UP1 fill:#4caf50,color:#fff
+                    style UP2 fill:#ffeb3b,color:#000
+                    style F1_2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+                    style F2_2 fill:#90caf9,stroke:#1976d2,stroke-width:2px
+                    style F3_2 fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+                    style Index fill:#7b1fa2,color:#fff
+            </div>
+
+            <h3>💾 Bandwidth-Ersparnis Beispiel</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Snapshot</th>
+                        <th>Dateigröße</th>
+                        <th>Neue Inhalte</th>
+                        <th>Hochgeladen</th>
+                        <th>Effektivität</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: rgba(76, 175, 80, 0.1);">
+                        <td><strong>Snap 1 (23.11)</strong></td>
+                        <td>100 GB</td>
+                        <td>100 GB (erste)</td>
+                        <td>100 GB</td>
+                        <td>—</td>
+                    </tr>
+                    <tr style="background: rgba(255, 235, 59, 0.1);">
+                        <td><strong>Snap 2 (24.11)</strong></td>
+                        <td>110 GB</td>
+                        <td>5 GB (new)</td>
+                        <td>🔗 5 GB</td>
+                        <td>✅ 95% gespart</td>
+                    </tr>
+                    <tr style="background: rgba(255, 235, 59, 0.1);">
+                        <td><strong>Snap 3 (25.11)</strong></td>
+                        <td>115 GB</td>
+                        <td>8 GB (new)</td>
+                        <td>🔗 8 GB</td>
+                        <td>✅ 93% gespart</td>
+                    </tr>
+                    <tr>
+                        <td colspan="5" style="text-align: center; font-weight: 600; color: #4caf50;">
+                            <strong>Total hochgeladen: 113 GB statt 325 GB = 65% Gesamtersparnis!</strong>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="success-box">
+                <strong>🎯 Mech:</strong><br>
+                1. SHA256 von jeder Datei berechnet<br>
+                2. Index prüft: "Existiert dieser Hash bereits?"<br>
+                3. JA → Nur Referenz-Stub hochgeladen<br>
+                4. NEIN → Ganzer File hochgeladen + Index aktualisiert<br>
+                <br>
+                <strong>Resultat:</strong> Massive Bandbreiteneinsparung bei inkrementellen Backups!
+            </div>
+        </div>
+
+        <!-- Tab 5: Multi-Source Setup -->
+        <div id="multi-source" class="content">
+            <h2>📊 Multi-Source Setup (Dein System)</h2>
+
+            <div class="info-box">
+                <strong>6 EntropyWatcher-Instanzen:</strong> Separates Scanning für NAS + OS, aber zentrale Datenbank
+            </div>
+
+            <div class="mermaid">
+                graph TB
+                    subgraph Sources["📁 Datenquellen"]
+                        NAS["🖥️ NAS<br/>/srv/nas"]
+                        OS["🖥️ OS<br/>/root, /home"]
+                    end
+
+                    subgraph Entropy["🔍 EntropyWatcher Services (6x)"]
+                        EW_NAS["hourly: entropywatcher-nas<br/>Timer: *:20"]
+                        EW_NAS_AV["daily: entropywatcher-nas-av<br/>Timer: Mo-Sa 02:00"]
+                        EW_NAS_AV_W["weekly: entropywatcher-nas-av-weekly<br/>Timer: So 03:00"]
+                        EW_OS["daily: entropywatcher-os<br/>Timer: täglich 03:40"]
+                        EW_OS_AV["daily: entropywatcher-os-av<br/>Timer: Mo-Sa 02:40"]
+                        EW_OS_AV_W["weekly: entropywatcher-os-av-weekly<br/>Timer: So 03:10"]
+                    end
+
+                    subgraph Database["🗄️ Zentrale Datenbank"]
+                        DB["MariaDB<br/>entropywatcher"]
+                        Tables["┌─ files (flagged)⁣<br/>├─ av_findings<br/>├─ scans<br/>└─ events"]
+                    end
+
+                    subgraph Backup["💾 Backup-Pipeline"]
+                        RtbW["rtb_wrapper.sh<br/>(02:00)"]
+                        SafeG["safety_gate.sh<br/>(aggregiert NAS+OS)"]
+                        pCloudW["wrapper_pcloud_sync_1to1.sh<br/>(02:15)"]
+                    end
+
+                    NAS --> EW_NAS
+                    NAS --> EW_NAS_AV
+                    NAS --> EW_NAS_AV_W
+                    OS --> EW_OS
+                    OS --> EW_OS_AV
+                    OS --> EW_OS_AV_W
+
+                    EW_NAS --> DB
+                    EW_NAS_AV --> DB
+                    EW_NAS_AV_W --> DB
+                    EW_OS --> DB
+                    EW_OS_AV --> DB
+                    EW_OS_AV_W --> DB
+
+                    DB --> SafeG
+                    SafeG --> RtbW
+                    RtbW --> pCloudW
+
+                    style EW_NAS fill:#2196f3,color:#fff
+                    style EW_OS fill:#2196f3,color:#fff
+                    style SafeG fill:#d32f2f,color:#fff
+                    style DB fill:#7b1fa2,color:#fff
+                    style RtbW fill:#ff9800,color:#fff
+            </div>
+
+            <h3>📋 Service-Matrix</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instanz</th>
+                        <th>SOURCE_LABEL</th>
+                        <th>Quelle</th>
+                        <th>Frequenz</th>
+                        <th>ALERT_STATE_FILE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>nas</strong></td>
+                        <td>nas</td>
+                        <td>/srv/nas</td>
+                        <td>Stündlich (:20)</td>
+                        <td>/var/lib/entropywatcher/nas_last_alert.txt</td>
+                    </tr>
+                    <tr>
+                        <td><strong>nas-av</strong></td>
+                        <td>nas-av</td>
+                        <td>/srv/nas (AV-Scan)</td>
+                        <td>Mo-Sa 02:00</td>
+                        <td>/var/lib/entropywatcher/nas_av_last_alert.txt</td>
+                    </tr>
+                    <tr>
+                        <td><strong>nas-av-weekly</strong></td>
+                        <td>nas-av-weekly</td>
+                        <td>/srv/nas (Full)</td>
+                        <td>So 03:00</td>
+                        <td>/var/lib/entropywatcher/nas_av_weekly_last_alert.txt</td>
+                    </tr>
+                    <tr>
+                        <td><strong>os</strong></td>
+                        <td>os</td>
+                        <td>/root, /home</td>
+                        <td>Täglich 03:40</td>
+                        <td>/var/lib/entropywatcher/os_last_alert.txt</td>
+                    </tr>
+                    <tr>
+                        <td><strong>os-av</strong></td>
+                        <td>os-av</td>
+                        <td>/root, /home (AV)</td>
+                        <td>Mo-Sa 02:40</td>
+                        <td>/var/lib/entropywatcher/os_av_last_alert.txt</td>
+                    </tr>
+                    <tr>
+                        <td><strong>os-av-weekly</strong></td>
+                        <td>os-av-weekly</td>
+                        <td>/root, /home (Full)</td>
+                        <td>So 03:10</td>
+                        <td>/var/lib/entropywatcher/os_av_weekly_last_alert.txt</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>🎯 Safety-Gate Aggregation</h3>
+            <div class="mermaid">
+                graph TD
+                    A["safety_gate.sh aufgerufen<br/>(02:00 vor Backup)"]
+                    B["Query alle Quellen<br/>SELECT * FROM events<br/>WHERE timestamp > now() - WINDOW"]
+                    C{"NAS Status?<br/>flagged>0 ODER av>0"}
+                    D{"OS Status?<br/>flagged>0 ODER av>0"}
+                    E{"Age ok?<br/>last_scan < SAFEAGE"}
+                    F["🟢 GREEN<br/>Exit 0"]
+                    G["🟡 YELLOW<br/>Exit 1"]
+                    H["🔴 RED<br/>Exit 2"]
+                    I["✅ Backup läuft"]
+                    J["⚠️ Backup mit Warning<br/>(oder blockiert)"]
+                    K["❌ Backup BLOCKIERT"]
+
+                    A --> B
+                    B --> C
+                    C -->|JA| H
+                    C -->|NEIN| D
+                    D -->|JA| H
+                    D -->|NEIN| E
+                    E -->|NEIN| H
+                    E -->|JA| F
+                    F --> I
+                    G --> J
+                    H --> K
+
+                    style F fill:#4caf50,color:#fff
+                    style G fill:#ff9800,color:#fff
+                    style H fill:#d32f2f,color:#fff
+                    style I fill:#4caf50,color:#fff
+                    style J fill:#ff9800,color:#fff
+                    style K fill:#d32f2f,color:#fff
+            </div>
+
+            <div class="success-box">
+                <strong>✅ Vorteile Multi-Source:</strong><br>
+                ✓ Separate Scan-Strategien (NAS: stündlich, OS: täglich)<br>
+                ✓ Zentrale DB für Audit-Trail + Reporting<br>
+                ✓ Aggregierter Safety-Gate (beide Quellen geprüft)<br>
+                ✓ Individuelles Email-Alerting (SOURCE_LABEL-spezifisch)<br>
+                ✓ Flexible Skalierbarkeit (weitere Quellen hinzufügbar)
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>📖 <strong>Dokumentation:</strong> CONFIGURATION.md | SAFETY_GATE.md | ARCHITECTURE.md | SYSTEMD_TIMERS.md</p>
+        <p>🔐 pCloud Backup Tools – Production Grade Ransomware-Protected Deduplication Backup System</p>
+        <p>✨ Generiert mit Mermaid.js</p>
+    </footer>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all content
+            document.querySelectorAll('.content').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Remove active from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected content
+            document.getElementById(tabName).classList.add('active');
+
+            // Activate corresponding button
+            event.target.classList.add('active');
+
+            // Trigger mermaid re-render if needed
+            if (window.mermaid) {
+                mermaid.contentLoaded();
+            }
+        }
+
+        // Initialize mermaid
+        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+        mermaid.contentLoaded();
+    </script>
+</body>
+</html>
