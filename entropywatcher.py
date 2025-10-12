@@ -215,107 +215,142 @@ def _parse_paths_arg(paths_arg: str) -> list[str]:
     items = [p.strip() for p in (paths_arg or "").split(",")]
     return [p for p in items if p]
 
-def load_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
+def load_config(ctx=None, command_name: str = "") -> tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Lädt Env-Dateien in einer definierten Reihenfolge und mit klarem Override-Verhalten:
-      - Immer zuerst: common.env (setzt nur, überschreibt selbst nie)
-      - Dann optional: zusätzliche Dateien (aus --env / EW_ENV_FILES)
-        • wenn Skript per systemd gestartet  →  nicht überschreiben
-        • wenn Skript manuell gestartet      →  überschreiben erlaubt (spätere gewinnen)
-
-    Rückgabe:
-      cfg   : fertige Konfiguration (Dict)
-      trace : Ladespur als Dict, damit der Aufrufer nach dem Logging-Setup sauber loggen kann
+    Ladelogik gemäß deiner Regeln:
+      • systemd: keine --env zulässig (nur EnvironmentFile= aus Unit). Abbruch, falls dennoch angegeben.
+      • CLI: mindestens eine --env Pflicht; diese Dateien werden in Reihenfolge mit override=True geladen.
+    Rückgabe: (cfg, trace) – trace protokolliert geladene Dateien / Overrides für späteres Logging & DB-Audit.
     """
-    systemd = _launched_by_systemd()
+    systemd   = bool(ctx and ctx.obj.get("systemd"))
+    env_files = (ctx.obj.get("env_files") if ctx else []) or []
 
-    base_candidates = [
-        "/opt/entropywatcher/common.env",
-        # "/opt/entropywatcher/.env",  # optionaler Fallback
-        # ".env",                      # lokaler Fallback
-    ]
+    loaded_base: list[str] = []
+    ov_base: list[tuple[str,str,str,str]] = []
+    set_base: list[tuple[str,str,str]] = []
+    loaded_extra: list[str] = []
+    ov_extra: list[tuple[str,str,str,str]] = []
+    set_extra: list[tuple[str,str,str]] = []
 
-    extra = os.getenv("EW_ENV_FILES", "")
-    extra_candidates = [p.strip() for p in extra.split(",") if p.strip()]
+    # — Regel 1: Unter systemd sind zusätzliche --env verboten
+    if systemd and env_files:
+        sys.stderr.write(
+            "Fehler: Unter systemd sind zusätzliche --env Dateien nicht erlaubt.\n"
+            "Pflege stattdessen EnvironmentFile= in der .service-Unit.\n"
+        )
+        # (Optional) Mail schicken, falls Mail-Settings schon aus der Umgebung vorhanden:
+        try:
+            tmp_cfg = {
+                "MAIL_ENABLE": str(os.getenv("MAIL_ENABLE","0")).lower() in ("1","true","yes"),
+                "MAIL_SMTP_HOST": os.getenv("MAIL_SMTP_HOST",""),
+                "MAIL_SMTP_PORT": int(os.getenv("MAIL_SMTP_PORT","587")),
+                "MAIL_STARTTLS": str(os.getenv("MAIL_STARTTLS","1")).lower() in ("1","true","yes"),
+                "MAIL_SSL": str(os.getenv("MAIL_SSL","0")).lower() in ("1","true","yes"),
+                "MAIL_USER": os.getenv("MAIL_USER",""),
+                "MAIL_PASS": os.getenv("MAIL_PASS",""),
+                "MAIL_FROM": os.getenv("MAIL_FROM","entropywatcher@localhost"),
+                "MAIL_TO": os.getenv("MAIL_TO",""),
+                "MAIL_SUBJECT_PREFIX": os.getenv("MAIL_SUBJECT_PREFIX","[EntropyWatcher]"),
+                "MAIL_MIN_ALERT_INTERVAL_MIN": int(os.getenv("MAIL_MIN_ALERT_INTERVAL_MIN","30")),
+                "ALERT_STATE_FILE": os.getenv("ALERT_STATE_FILE","/var/lib/entropywatcher/last_alert.txt"),
+            }
+            if tmp_cfg["MAIL_ENABLE"] and tmp_cfg["MAIL_SMTP_HOST"] and tmp_cfg["MAIL_TO"]:
+                send_alert_email(
+                    subject_core=f"Verbotene --env unter systemd ({command_name})",
+                    body="Das Skript wurde unter systemd mit --env gestartet. "
+                         "Bitte die Unit via EnvironmentFile= konfigurieren.",
+                    cfg=tmp_cfg
+                )
+        except Exception:
+            pass
+        sys.exit(2)
 
-    # 1) common + Fallbacks: niemals existierendes überschreiben
-    loaded_base, ov_base, set_base = _load_env_chain(base_candidates, override=False)
+    # — Regel 2: Bei CLI muss mind. eine --env angegeben werden (keine impliziten Defaults)
+    info_only = command_name in ("help-examples",)
+    if (not systemd) and (not info_only) and (not env_files):
+        sys.stderr.write(
+            "Fehler: Bei CLI-Aufruf muss mindestens eine --env angegeben werden.\n"
+            "Beispiel:\n"
+            "  entropywatcher.py --env /opt/entropywatcher/common.env "
+            "--env /opt/entropywatcher/nas.env scan --paths \"/srv/nas\"\n"
+        )
+        sys.exit(2)
 
-    # 2) zusätzliche Dateien: nur überschreiben, wenn NICHT systemd
-    loaded_extra, ov_extra, set_extra = _load_env_chain(
-        extra_candidates,
-        override=(not systemd)
-    )
+    # — CLI: die angegebenen Dateien in Reihenfolge laden (spätere gewinnen)
+    if (not systemd) and env_files:
+        loaded_extra, ov_extra, set_extra = _load_env_chain(env_files, override=True)
 
+    # — Ab hier: Konfiguration aus der (jetzt vorbereiteten) Umgebung lesen
     cfg: Dict[str, Any] = {
         # DB
-        "DB_HOST": os.getenv("DB_HOST", "localhost"),
+        "DB_HOST": os.getenv("DB_HOST","localhost"),
         "DB_PORT": _env_int("DB_PORT", 3306),
-        "DB_NAME": os.getenv("DB_NAME", "entropywatcher"),
-        "DB_USER": os.getenv("DB_USER", "entropyuser"),
-        "DB_PASS": os.getenv("DB_PASS", ""),
+        "DB_NAME": os.getenv("DB_NAME","entropywatcher"),
+        "DB_USER": os.getenv("DB_USER","entropyuser"),
+        "DB_PASS": os.getenv("DB_PASS",""),
 
-        # Pfade & Filter
-        "EXCLUDES": [e.strip() for e in _env_str("EXCLUDES", "").split(",") if e.strip()],
-        "SCORE_EXCLUDES": [e.strip() for e in _env_str("SCORE_EXCLUDES", "").split(",") if e.strip()],
-        "EXCLUDES_MODE": _env_str("EXCLUDES_MODE", "glob"),             # glob|regex
-        "SCORE_EXCLUDES_MODE": _env_str("SCORE_EXCLUDES_MODE", "glob"), # glob|regex
+        # Filter
+        "EXCLUDES": [e.strip() for e in _env_str("EXCLUDES","").split(",") if e.strip()],
+        "SCORE_EXCLUDES": [e.strip() for e in _env_str("SCORE_EXCLUDES","").split(",") if e.strip()],
+        "EXCLUDES_MODE": _env_str("EXCLUDES_MODE","glob"),
+        "SCORE_EXCLUDES_MODE": _env_str("SCORE_EXCLUDES_MODE","glob"),
 
         # Größen
         "MIN_SIZE": _env_int("MIN_SIZE", 1),
-        "MAX_SIZE": _env_int("MAX_SIZE", 0),   # 0 = kein Limit
+        "MAX_SIZE": _env_int("MAX_SIZE", 0),
 
         # Engine & Performance
-        "USE_ENT": _as_bool(os.getenv("USE_ENT", "1")),
-        "ENT_THRESHOLD": _env_int("ENT_THRESHOLD", 1048576),  # 1 MiB
-        "ENT_TIMEOUT": _env_int("ENT_TIMEOUT", 30),           # Sekunden Timeout für 'ent'
-        "CHUNK_SIZE": _env_int("CHUNK_SIZE", 4194304),        # 4 MiB
-        "WORKERS": _env_int("WORKERS", 3),                    # Heavy-Worker
+        "USE_ENT": _as_bool(os.getenv("USE_ENT","1")),
+        "ENT_THRESHOLD": _env_int("ENT_THRESHOLD", 1048576),
+        "ENT_TIMEOUT": _env_int("ENT_TIMEOUT", 30),
+        "CHUNK_SIZE": _env_int("CHUNK_SIZE", 4194304),
+        "WORKERS": _env_int("WORKERS", 3),
 
-        # Alarm-Heuristik
+        # Heuristik
         "ALERT_ENTROPY_ABS": _env_float("ALERT_ENTROPY_ABS", 7.8),
         "ALERT_ENTROPY_JUMP": _env_float("ALERT_ENTROPY_JUMP", 1.0),
 
         # Härtung
-        "QUICK_FINGERPRINT": _as_bool(os.getenv("QUICK_FINGERPRINT", "1")),
-        "QUICK_FP_SAMPLE": _env_int("QUICK_FP_SAMPLE", 65536),            # 64 KiB
+        "QUICK_FINGERPRINT": _as_bool(os.getenv("QUICK_FINGERPRINT","1")),
+        "QUICK_FP_SAMPLE": _env_int("QUICK_FP_SAMPLE", 65536),
         "PERIODIC_REVERIFY_DAYS": _env_int("PERIODIC_REVERIFY_DAYS", 7),
 
         # Logging
-        "LOG_LEVEL": _env_str("LOG_LEVEL", "INFO").upper(),  # optional: Normalisierung hier
-        "LOG_FILE": os.getenv("LOG_FILE", ""),               # leer = STDOUT
-        "SOURCE_LABEL": os.getenv("SOURCE_LABEL", "").strip(),
+        "LOG_LEVEL": _env_str("LOG_LEVEL","INFO").upper(),
+        "LOG_FILE": os.getenv("LOG_FILE",""),
+        "SOURCE_LABEL": os.getenv("SOURCE_LABEL","").strip(),
         "TZ": os.getenv("TZ", "Europe/Zurich"),
     }
 
-    # --- Mail ---
+    # Mail
     cfg.update({
-        "MAIL_ENABLE": _as_bool(os.getenv("MAIL_ENABLE", "0")),
-        "MAIL_SMTP_HOST": _env_str("MAIL_SMTP_HOST", ""),
+        "MAIL_ENABLE": _as_bool(os.getenv("MAIL_ENABLE","0")),
+        "MAIL_SMTP_HOST": _env_str("MAIL_SMTP_HOST",""),
         "MAIL_SMTP_PORT": _env_int("MAIL_SMTP_PORT", 587),
-        "MAIL_STARTTLS": _as_bool(os.getenv("MAIL_STARTTLS", "1")),
-        "MAIL_SSL": _as_bool(os.getenv("MAIL_SSL", "0")),
-        "MAIL_USER": os.getenv("MAIL_USER", ""),
-        "MAIL_PASS": os.getenv("MAIL_PASS", ""),
-        "MAIL_FROM": _env_str("MAIL_FROM", "entropywatcher@localhost"),
-        "MAIL_TO": _env_str("MAIL_TO", ""),
-        "MAIL_SUBJECT_PREFIX": _env_str("MAIL_SUBJECT_PREFIX", "[EntropyWatcher]"),
+        "MAIL_STARTTLS": _as_bool(os.getenv("MAIL_STARTTLS","1")),
+        "MAIL_SSL": _as_bool(os.getenv("MAIL_SSL","0")),
+        "MAIL_USER": os.getenv("MAIL_USER",""),
+        "MAIL_PASS": os.getenv("MAIL_PASS",""),
+        "MAIL_FROM": _env_str("MAIL_FROM","entropywatcher@localhost"),
+        "MAIL_TO": _env_str("MAIL_TO",""),
+        "MAIL_SUBJECT_PREFIX": _env_str("MAIL_SUBJECT_PREFIX","[EntropyWatcher]"),
         "MAIL_MIN_ALERT_INTERVAL_MIN": _env_int("MAIL_MIN_ALERT_INTERVAL_MIN", 30),
-        "ALERT_STATE_FILE": os.getenv("ALERT_STATE_FILE", "/var/lib/entropywatcher/last_alert.txt"),
+        "ALERT_STATE_FILE": os.getenv("ALERT_STATE_FILE","/var/lib/entropywatcher/last_alert.txt"),
     })
 
-    # --- ClamAV Virenscanner ---
+    # ClamAV
     cfg.update({
-        "CLAMAV_ENABLE": _as_bool(os.getenv("CLAMAV_ENABLE", "0")),
-        "CLAMAV_USE_CLAMD": _as_bool(os.getenv("CLAMAV_USE_CLAMD", "0")),
-        "CLAMAV_EXCLUDES": [e.strip() for e in _env_str("CLAMAV_EXCLUDES", "").split(",") if e.strip()],
-        "CLAMAV_EXCLUDES_MODE": _env_str("CLAMAV_EXCLUDES_MODE", "glob"),
+        "CLAMAV_ENABLE": _as_bool(os.getenv("CLAMAV_ENABLE","0")),
+        "CLAMAV_USE_CLAMD": _as_bool(os.getenv("CLAMAV_USE_CLAMD","0")),
+        "CLAMAV_EXCLUDES": [e.strip() for e in _env_str("CLAMAV_EXCLUDES","").split(",") if e.strip()],
+        "CLAMAV_EXCLUDES_MODE": _env_str("CLAMAV_EXCLUDES_MODE","glob"),
         "CLAMAV_MAX_FILESIZE_MB": _env_int("CLAMAV_MAX_FILESIZE_MB", 0),
         "CLAMAV_THREADS": _env_int("CLAMAV_THREADS", 2),
         "CLAMAV_TIMEOUT": _env_int("CLAMAV_TIMEOUT", 1800),
-        # >>> NEU: Quarantäne-Settings
+
+        # (deine) Quarantäne-Settings bleiben erhalten
         "AV_QUARANTINE_DIR": _env_str("AV_QUARANTINE_DIR", "/srv/nas/av-quarantine"),
-        "AV_QUARANTINE_ACTION": _env_str("AV_QUARANTINE_ACTION", "move"),  # move|copy|chmod|none
+        "AV_QUARANTINE_ACTION": _env_str("AV_QUARANTINE_ACTION", "move"),
         "AV_QUARANTINE_CHMOD": _env_str("AV_QUARANTINE_CHMOD", "000"),
     })
 
@@ -334,10 +369,10 @@ def load_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
     # --- Ladespur für späteres Logging zurückgeben ---
     trace: Dict[str, Any] = {
         "systemd": systemd,
-        "loaded_base": loaded_base,
-        "loaded_extra": loaded_extra,
-        "overrides": ov_base + ov_extra,  # Liste von (key, old, new, src)
-        "sets": set_base + set_extra,     # Liste von (key, new, src)
+        "loaded_base": loaded_base,       # hier leer (wir laden keine Defaults mehr)
+        "loaded_extra": loaded_extra,     # die per CLI angegebenen Dateien
+        "overrides": ov_base + ov_extra,  # von _load_env_chain geliefert
+        "sets": set_base + set_extra,     # 
     }
 
     return cfg, trace
@@ -1229,8 +1264,8 @@ def _heavy_job(args) -> Tuple[str, Optional[os.stat_result], Optional[bytes], Op
 )
 @click.option(
     "--env", "env_files", multiple=True,
-    help="Zusätzliche .env-Dateien (kann mehrfach angegeben werden). "
-         "Beispiel: --env /opt/entropywatcher/os.env --env /opt/entropywatcher/override.env"
+    help="Zusätzliche .env-Dateien in Reihenfolge (CLI-Pflicht; unter systemd verboten)."
+         "Beispiel: --env /opt/entropywatcher/commmon.env --env /opt/entropywatcher/nas.env"
 )
 @click.pass_context
 def cli(ctx, env_files):
@@ -1243,8 +1278,9 @@ def cli(ctx, env_files):
       - Hilfe zu Befehlen:  entropywatcher.py <COMMAND> --help   (z.B. scan, init-scan, av-scan)
       - Beispiele:  entropywatcher.py help-examples
     """
-    if env_files:
-        os.environ["EW_ENV_FILES"] = ",".join(env_files)
+    ctx.ensure_object(dict)
+    ctx.obj["env_files"] = list(env_files)
+    ctx.obj["systemd"]   = _launched_by_systemd()
 
 # help
 @cli.command("help", context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
@@ -1429,11 +1465,12 @@ python -m py_compile /opt/entropywatcher/entropywatcher.py && echo "Syntax ok �
 
 
 @cli.command("init-scan", short_help="Einmaliger Basis-Scan mit Härtung; Pfade via --paths")
-@click.option("--paths", required=True, help="Kommagetrennte Verzeichnisse für den Baseline-Scan (Pflicht).")
+@click.option("--paths", required=True, help="Kommagetrennte Pfade/Verzeichnisse für den Baseline-Scan (Pflicht).")
 @click.option("--force", is_flag=True, help="Initialen Vollscan erzwingen, auch wenn DB bereits Einträge hat.")
-def init_scan(paths, force):
+@click.pass_context
+def init_scan(ctx, paths, force):
     """Erstscan: Baseline setzen (Startwerte nie überschreiben)."""
-    cfg, trace = load_config()
+    cfg, trace = load_config(ctx, "init-scan")
     logger, q, listener = setup_logging(cfg)
     _log_load_trace(trace)
     conn = db_connect(cfg)
@@ -1504,13 +1541,14 @@ def init_scan(paths, force):
 @click.option(
     "--paths",
     required=True,
-    help="Kommagetrennte Verzeichnisse für den Delta-/Reverify-Scan (Pflicht).",
+    help="Kommagetrennte Pfade/Verzeichnisse, für den Delta-/Reverify-Scan (Pflicht).",
 )
-def scan(paths):
+@click.pass_context
+def scan(ctx, paths):
     """Folgescan: nur neue/geänderte; Härtung via Quick-FP & periodische Reverify; parallelisiert."""
     from multiprocessing import cpu_count, get_context
 
-    cfg, trace = load_config()
+    cfg, trace = load_config(ctx, "scan")
 
     # Konsistente Startzeit (DB/Log) + Liste für neu auf 'flagged' gewechselte Dateien
     scan_started_at = now_db()
@@ -1822,9 +1860,10 @@ def scan(paths):
 @click.option("--export", type=click.Path(dir_okay=False), help="Export-Datei (CSV/JSON)")
 @click.option("--format", "fmt", type=click.Choice(["csv","json"]), default="csv")
 @click.option("--source", type=click.Choice(["os","nas",""]), default="", help="Nach Quelle filtern")
-def report(only_flagged, since_missing, export, fmt, source):
+@click.pass_context
+def report(ctx, only_flagged, since_missing, export, fmt, source):
     """Report mit Start/Prev/Last + Datum; Exempt markieren; optional Export."""
-    cfg, trace = load_config()
+    cfg, trace = load_config(ctx, "report")
     logger, q, listener = setup_logging(cfg)
     conn = db_connect(cfg)
     cur = conn.cursor(dictionary=True)
@@ -2277,9 +2316,10 @@ def db_report(what, source, hours, limit):
 # Tagging
 @cli.command("tag-exempt")
 @click.argument("path", type=str)
-def tag_exempt(path):
+@click.pass_context
+def tag_exempt(ctx, path):
     """Markiert eine Datei als 'score_exempt' (weiter messen, aber nicht alarmieren)."""
-    cfg, trace = load_config(); logger, q, listener = setup_logging(cfg)
+    cfg, trace = load_config(ctx, "tag-exempt"); logger, q, listener = setup_logging(cfg)
     key = db_key_from_path(path)
     conn = db_connect(cfg); cur = conn.cursor()
     cur.execute("UPDATE files SET score_exempt=1 WHERE path=%s", (key,))
@@ -2290,9 +2330,10 @@ def tag_exempt(path):
 
 @cli.command("tag-normal")
 @click.argument("path", type=str)
-def tag_normal(path):
+@click.pass_context
+def tag_normal(ctx, path):
     """Entfernt das 'score_exempt'-Flag."""
-    cfg, trace = load_config(); logger, q, listener = setup_logging(cfg)
+    cfg, trace = load_config(ctx, "tag-normal"); logger, q, listener = setup_logging(cfg)
     key = db_key_from_path(path)
     conn = db_connect(cfg); cur = conn.cursor()
     cur.execute("UPDATE files SET score_exempt=0 WHERE path=%s", (key,))
@@ -2302,9 +2343,10 @@ def tag_normal(path):
     teardown_logging(listener)
 
 @cli.command("stats")
-def stats():
+@click.pass_context
+def stats(ctx):
     """Kleine Übersicht: Gesamt, Flagged, Missing, Exempt."""
-    cfg, trace = load_config(); logger, q, listener = setup_logging(cfg)
+    cfg, trace = load_config(ctx, "stats"); logger, q, listener = setup_logging(cfg)
     conn = db_connect(cfg); cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM files"); total = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM files WHERE flagged=1"); flg = cur.fetchone()[0]
@@ -2317,9 +2359,10 @@ def stats():
 
 @cli.command("av-scan")
 @click.option("--paths", required=True, help="Kommagetrennte Pfade für ClamAV-Scan (Pflicht).")
-def av_scan(paths):
+@click.pass_context
+def av_scan(ctx, paths):
     """ClamAV-Scan über die angegebenen Pfade; Mail bei Funden."""
-    cfg, trace = load_config()
+    cfg, trace = load_config(ctx, "av-scan")
     logger, q, listener = setup_logging(cfg)
     _log_load_trace(trace)
 
