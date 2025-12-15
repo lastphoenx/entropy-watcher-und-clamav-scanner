@@ -8,6 +8,29 @@ Pre-Backup Security Gate für Debian-Systeme. Kombiniert Entropie-Analyse, ClamA
 
 ---
 
+## 📚 Table of Contents
+
+- [🏗️ Projekt-Übersicht](#️-projekt-übersicht-secure-nas--backup-ecosystem)
+  - [📦 Repositories](#-repositories)
+  - [🎯 Die Entstehungsgeschichte](#-die-entstehungsgeschichte)
+  - [🔗 Zusammenspiel der Komponenten](#-zusammenspiel-der-komponenten)
+- [🛠️ Technologie-Stack](#️-technologie-stack)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Examples](#examples)
+- [Honeyfile Setup](#honeyfile-setup)
+- [Architecture](#architecture)
+- [Alert Logic](#alert-logic)
+- [Monitoring & Logs](#monitoring--logs)
+- [Typical Deployment](#typical-deployment)
+- [Best Practices](#best-practices)
+- [📚 Erweiterte Dokumentation](#-erweiterte-dokumentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 # 🏗️ Projekt-Übersicht: Secure NAS & Backup Ecosystem
 
 ## 📦 Repositories
