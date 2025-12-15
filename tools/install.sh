@@ -1,0 +1,600 @@
+#!/usr/bin/env bash
+#
+# install.sh - Interactive/Non-Interactive EntropyWatcher Installation
+#
+# Usage:
+#   sudo ./install.sh --interactive
+#   sudo ./install.sh --non-interactive --db-password "..." --smtp-host "..." [OPTIONS]
+#
+# Options:
+#   --interactive              Interactive mode (prompts for all values)
+#   --non-interactive          Automated mode (requires all params)
+#   --db-password PASSWORD     MariaDB password for entropyuser
+#   --smtp-host HOST           SMTP server hostname
+#   --smtp-port PORT           SMTP port (default: 587)
+#   --smtp-user USER           SMTP username
+#   --smtp-password PASS       SMTP password
+#   --smtp-from EMAIL          From address (default: entropywatch@$(hostname))
+#   --admin-email EMAIL        Admin email for alerts
+#   --nas-paths PATHS          NAS scan paths (comma-separated)
+#   --os-paths PATHS           OS scan paths (comma-separated)
+#   --install-clamav           Install ClamAV + Daemon
+#   --skip-clamav              Skip ClamAV installation
+#   --install-honeyfiles       Install Honeyfiles + Auditd
+#   --skip-honeyfiles          Skip Honeyfiles installation
+#   --skip-systemd             Skip systemd service installation
+#   --skip-db-init             Skip database initialization
+#   --install-dir PATH         Installation directory (default: /opt/apps/entropywatcher)
+
+set -euo pipefail
+
+# ============================================================================
+# Configuration
+# ============================================================================
+INTERACTIVE=0
+INSTALL_CLAMAV=""
+INSTALL_HONEYFILES=""
+INSTALL_SYSTEMD=1
+INIT_DATABASE=1
+
+INSTALL_DIR="/opt/apps/entropywatcher"
+DB_HOST="localhost"
+DB_PORT="3306"
+DB_NAME="entropywatcher"
+DB_USER="entropyuser"
+DB_PASSWORD=""
+
+SMTP_HOST=""
+SMTP_PORT="587"
+SMTP_USER=""
+SMTP_PASSWORD=""
+SMTP_FROM=""
+ADMIN_EMAIL=""
+
+NAS_PATHS="/srv/nas/data,/srv/nas/media"
+OS_PATHS="/,/boot,/home"
+
+# ============================================================================
+# Colors
+# ============================================================================
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log() {
+    printf "%s[%s]%s %s\n" "$GREEN" "$(date '+%F %T')" "$NC" "$*"
+}
+
+error() {
+    printf "%s[ERROR]%s %s\n" "$RED" "$NC" "$*" >&2
+}
+
+warn() {
+    printf "%s[WARN]%s %s\n" "$YELLOW" "$NC" "$*"
+}
+
+info() {
+    printf "%s[INFO]%s %s\n" "$BLUE" "$NC" "$*"
+}
+
+# ============================================================================
+# Parse Arguments
+# ============================================================================
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --interactive)
+            INTERACTIVE=1
+            shift
+            ;;
+        --non-interactive)
+            INTERACTIVE=0
+            shift
+            ;;
+        --db-password)
+            DB_PASSWORD="$2"
+            shift 2
+            ;;
+        --smtp-host)
+            SMTP_HOST="$2"
+            shift 2
+            ;;
+        --smtp-port)
+            SMTP_PORT="$2"
+            shift 2
+            ;;
+        --smtp-user)
+            SMTP_USER="$2"
+            shift 2
+            ;;
+        --smtp-password)
+            SMTP_PASSWORD="$2"
+            shift 2
+            ;;
+        --smtp-from)
+            SMTP_FROM="$2"
+            shift 2
+            ;;
+        --admin-email)
+            ADMIN_EMAIL="$2"
+            shift 2
+            ;;
+        --nas-paths)
+            NAS_PATHS="$2"
+            shift 2
+            ;;
+        --os-paths)
+            OS_PATHS="$2"
+            shift 2
+            ;;
+        --install-clamav)
+            INSTALL_CLAMAV=1
+            shift
+            ;;
+        --skip-clamav)
+            INSTALL_CLAMAV=0
+            shift
+            ;;
+        --install-honeyfiles)
+            INSTALL_HONEYFILES=1
+            shift
+            ;;
+        --skip-honeyfiles)
+            INSTALL_HONEYFILES=0
+            shift
+            ;;
+        --skip-systemd)
+            INSTALL_SYSTEMD=0
+            shift
+            ;;
+        --skip-db-init)
+            INIT_DATABASE=0
+            shift
+            ;;
+        --install-dir)
+            INSTALL_DIR="$2"
+            shift 2
+            ;;
+        *)
+            error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# ============================================================================
+# Root Check
+# ============================================================================
+if [[ $EUID -ne 0 ]]; then
+    error "This script must be run as root (use sudo)"
+    exit 1
+fi
+
+# ============================================================================
+# Interactive Prompts
+# ============================================================================
+if [[ $INTERACTIVE -eq 1 ]]; then
+    log "═══════════════════════════════════════════════════════════"
+    log "EntropyWatcher Installation - Interactive Mode"
+    log "═══════════════════════════════════════════════════════════"
+    echo
+
+    # MariaDB Password
+    read -sp "MariaDB password for user 'entropyuser': " DB_PASSWORD
+    echo
+    if [[ -z "$DB_PASSWORD" ]]; then
+        error "Database password cannot be empty"
+        exit 1
+    fi
+
+    # SMTP Configuration
+    read -p "SMTP Host (e.g., smtp.gmail.com): " SMTP_HOST
+    read -p "SMTP Port [587]: " SMTP_PORT_INPUT
+    SMTP_PORT="${SMTP_PORT_INPUT:-587}"
+    read -p "SMTP User: " SMTP_USER
+    read -sp "SMTP Password: " SMTP_PASSWORD
+    echo
+    read -p "Admin Email: " ADMIN_EMAIL
+
+    # Scan Paths
+    read -p "NAS Scan Paths [${NAS_PATHS}]: " NAS_PATHS_INPUT
+    NAS_PATHS="${NAS_PATHS_INPUT:-$NAS_PATHS}"
+    read -p "OS Scan Paths [${OS_PATHS}]: " OS_PATHS_INPUT
+    OS_PATHS="${OS_PATHS_INPUT:-$OS_PATHS}"
+
+    # Optional Components
+    read -p "Install ClamAV? [Y/n]: " CLAMAV_CHOICE
+    case "$CLAMAV_CHOICE" in
+        [Nn]*) INSTALL_CLAMAV=0 ;;
+        *) INSTALL_CLAMAV=1 ;;
+    esac
+
+    read -p "Install Honeyfiles + Auditd? [Y/n]: " HONEYFILE_CHOICE
+    case "$HONEYFILE_CHOICE" in
+        [Nn]*) INSTALL_HONEYFILES=0 ;;
+        *) INSTALL_HONEYFILES=1 ;;
+    esac
+
+    echo
+fi
+
+# ============================================================================
+# Validation (Non-Interactive)
+# ============================================================================
+if [[ $INTERACTIVE -eq 0 ]]; then
+    if [[ -z "$DB_PASSWORD" ]]; then
+        error "Non-interactive mode requires --db-password"
+        exit 1
+    fi
+    if [[ -z "$SMTP_HOST" ]] || [[ -z "$SMTP_USER" ]] || [[ -z "$SMTP_PASSWORD" ]] || [[ -z "$ADMIN_EMAIL" ]]; then
+        warn "SMTP configuration incomplete. Email alerts will not work."
+        warn "Provide: --smtp-host, --smtp-user, --smtp-password, --admin-email"
+    fi
+    # Auto-decide on optional components if not specified
+    if [[ -z "$INSTALL_CLAMAV" ]]; then
+        INSTALL_CLAMAV=1  # Default: install
+    fi
+    if [[ -z "$INSTALL_HONEYFILES" ]]; then
+        INSTALL_HONEYFILES=1  # Default: install
+    fi
+fi
+
+# Default SMTP_FROM
+if [[ -z "$SMTP_FROM" ]]; then
+    SMTP_FROM="entropywatch@$(hostname -f)"
+fi
+
+# ============================================================================
+# Summary
+# ============================================================================
+log "═══════════════════════════════════════════════════════════"
+log "Installation Summary"
+log "═══════════════════════════════════════════════════════════"
+info "Install Directory: $INSTALL_DIR"
+info "Database: $DB_NAME (User: $DB_USER)"
+info "SMTP: $SMTP_HOST:$SMTP_PORT (User: $SMTP_USER)"
+info "Admin Email: $ADMIN_EMAIL"
+info "NAS Paths: $NAS_PATHS"
+info "OS Paths: $OS_PATHS"
+info "Install ClamAV: $([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'YES' || echo 'NO')"
+info "Install Honeyfiles: $([ "$INSTALL_HONEYFILES" -eq 1 ] && echo 'YES' || echo 'NO')"
+info "Install Systemd Services: $([ "$INSTALL_SYSTEMD" -eq 1 ] && echo 'YES' || echo 'NO')"
+log "═══════════════════════════════════════════════════════════"
+echo
+
+if [[ $INTERACTIVE -eq 1 ]]; then
+    read -p "Proceed with installation? [Y/n]: " CONFIRM
+    case "$CONFIRM" in
+        [Nn]*) 
+            warn "Installation cancelled by user"
+            exit 0
+            ;;
+    esac
+fi
+
+# ============================================================================
+# STEP 1: Install System Packages
+# ============================================================================
+log "STEP 1: Installing system packages..."
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update -qq
+apt-get install -y -qq \
+    git \
+    python3 \
+    python3-venv \
+    python3-pip \
+    mariadb-server \
+    mariadb-client \
+    libmariadb-dev \
+    pkg-config \
+    build-essential \
+    curl \
+    wget
+
+log "✓ Base packages installed"
+
+# ClamAV
+if [[ $INSTALL_CLAMAV -eq 1 ]]; then
+    log "Installing ClamAV..."
+    apt-get install -y -qq \
+        clamav \
+        clamav-daemon \
+        clamav-freshclam
+    log "✓ ClamAV installed"
+fi
+
+# Auditd
+if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
+    log "Installing Auditd..."
+    apt-get install -y -qq auditd audispd-plugins
+    log "✓ Auditd installed"
+fi
+
+# ============================================================================
+# STEP 2: MariaDB Setup
+# ============================================================================
+if [[ $INIT_DATABASE -eq 1 ]]; then
+    log "STEP 2: Setting up MariaDB..."
+
+    # Start MariaDB
+    systemctl enable mariadb >/dev/null 2>&1
+    systemctl start mariadb
+
+    # Create Database + User
+    log "Creating database and user..."
+    mysql -u root <<EOF
+CREATE DATABASE IF NOT EXISTS ${DB_NAME} 
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;
+
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' 
+  IDENTIFIED BY '${DB_PASSWORD}';
+
+GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+
+    log "✓ Database initialized"
+else
+    warn "Skipping database initialization (--skip-db-init)"
+fi
+
+# ============================================================================
+# STEP 3: Python Virtual Environment
+# ============================================================================
+log "STEP 3: Setting up Python virtual environment..."
+
+cd "$INSTALL_DIR/main" || {
+    error "Directory $INSTALL_DIR/main not found. Clone the repository first!"
+    exit 1
+}
+
+python3 -m venv venv
+source venv/bin/activate
+pip install --quiet --upgrade pip
+pip install --quiet -r requirements.txt
+
+log "✓ Python environment ready"
+
+# ============================================================================
+# STEP 4: Create common.env
+# ============================================================================
+log "STEP 4: Creating common.env..."
+
+cat > "$INSTALL_DIR/main/common.env" <<EOF
+# ============================================================================
+# EntropyWatcher Configuration
+# Generated: $(date '+%F %T')
+# ============================================================================
+
+# ============================================================================
+# DATABASE
+# ============================================================================
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+
+# ============================================================================
+# MAIL ALERTS
+# ============================================================================
+SMTP_HOST=${SMTP_HOST}
+SMTP_PORT=${SMTP_PORT}
+SMTP_USER=${SMTP_USER}
+SMTP_PASSWORD=${SMTP_PASSWORD}
+SMTP_FROM=${SMTP_FROM}
+ADMIN_EMAIL=${ADMIN_EMAIL}
+
+# ============================================================================
+# SCAN PATHS
+# ============================================================================
+NAS_SCAN_PATHS=${NAS_PATHS}
+NAS_SCAN_EXCLUDES=**/.git/**,**/*.swp,**/token.env,**/.Trash-*/**,**/@Recycle/**
+
+OS_SCAN_PATHS=${OS_PATHS}
+OS_SCAN_EXCLUDES=/proc/**,/sys/**,/dev/**,/run/**,/tmp/**,/var/cache/**,/var/tmp/**,/snap/**,**/.git/**
+
+# ============================================================================
+# CLAMAV
+# ============================================================================
+CLAMAV_ENABLED=$([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'true' || echo 'false')
+CLAMSCAN_BIN=/usr/bin/clamdscan
+CLAMD_SOCKET=/var/run/clamav/clamd.ctl
+
+# ============================================================================
+# SAFETY GATE
+# ============================================================================
+SAFETY_GATE_FILE=/run/entropywatcher-safety-gate
+SAFETY_GATE_LOCKFILE=/run/backup_pipeline.lock
+
+# ============================================================================
+# HONEYFILES
+# ============================================================================
+HONEYFILE_PATHS_FILE=${INSTALL_DIR}/config/honeyfile_paths
+AUDITD_RULES_FILE=${INSTALL_DIR}/config/auditd_honeyfiles.rules
+EOF
+
+chmod 600 "$INSTALL_DIR/main/common.env"
+log "✓ common.env created (chmod 600)"
+
+# ============================================================================
+# STEP 5: ClamAV Setup
+# ============================================================================
+if [[ $INSTALL_CLAMAV -eq 1 ]]; then
+    log "STEP 5: Configuring ClamAV..."
+
+    # Stop freshclam service
+    systemctl stop clamav-freshclam || true
+
+    # Update signatures (timeout after 10 minutes)
+    log "Updating ClamAV signatures (this may take 5-10 minutes)..."
+    timeout 600 freshclam || {
+        warn "Freshclam timeout or failed. Signatures might be outdated."
+    }
+
+    # Start services
+    systemctl enable clamav-freshclam >/dev/null 2>&1
+    systemctl start clamav-freshclam
+    systemctl enable clamav-daemon >/dev/null 2>&1
+    systemctl start clamav-daemon
+
+    # Wait for socket
+    for i in {1..30}; do
+        if [[ -S /var/run/clamav/clamd.ctl ]]; then
+            log "✓ ClamAV daemon ready"
+            break
+        fi
+        sleep 1
+    done
+
+    if [[ ! -S /var/run/clamav/clamd.ctl ]]; then
+        warn "ClamAV socket not found. Check: systemctl status clamav-daemon"
+    fi
+fi
+
+# ============================================================================
+# STEP 6: Honeyfiles + Auditd
+# ============================================================================
+if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
+    log "STEP 6: Setting up Honeyfiles + Auditd..."
+
+    # Start Auditd
+    systemctl enable auditd >/dev/null 2>&1
+    systemctl start auditd
+
+    # Create config directory
+    mkdir -p "$INSTALL_DIR/config"
+
+    # Run setup_honeyfiles.sh
+    if [[ -x "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" ]]; then
+        "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" \
+            --non-interactive \
+            --base-dir "$INSTALL_DIR/honeyfiles" \
+            --config-dir "$INSTALL_DIR/config"
+        log "✓ Honeyfiles created"
+    else
+        warn "setup_honeyfiles.sh not found or not executable"
+    fi
+
+    # Load auditd rules
+    if [[ -f "$INSTALL_DIR/config/auditd_honeyfiles.rules" ]]; then
+        auditctl -R "$INSTALL_DIR/config/auditd_honeyfiles.rules" || {
+            warn "Failed to load auditd rules"
+        }
+        # Make persistent
+        cp "$INSTALL_DIR/config/auditd_honeyfiles.rules" /etc/audit/rules.d/honeyfiles.rules
+        log "✓ Auditd rules loaded"
+    fi
+fi
+
+# ============================================================================
+# STEP 7: Initialize Database Tables
+# ============================================================================
+log "STEP 7: Initializing database tables..."
+
+# Run entropywatcher.py once to create tables
+cd "$INSTALL_DIR/main"
+source venv/bin/activate
+
+# Use --help to trigger table creation without actual scan
+venv/bin/python3 entropywatcher.py --help >/dev/null 2>&1 || true
+
+# Verify tables exist
+TABLES=$(mysql -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -se "SHOW TABLES;" 2>/dev/null | wc -l)
+if [[ $TABLES -ge 5 ]]; then
+    log "✓ Database tables created (${TABLES} tables)"
+else
+    warn "Database tables might not be created. Run a manual scan to initialize."
+fi
+
+# ============================================================================
+# STEP 8: Install Systemd Services
+# ============================================================================
+if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
+    log "STEP 8: Installing systemd services..."
+
+    SYSTEMD_DIR="$INSTALL_DIR/main/systemd"
+    if [[ -d "$SYSTEMD_DIR" ]]; then
+        cp "$SYSTEMD_DIR"/*.service /etc/systemd/system/ 2>/dev/null || true
+        cp "$SYSTEMD_DIR"/*.timer /etc/systemd/system/ 2>/dev/null || true
+
+        systemctl daemon-reload
+
+        # Enable timers
+        systemctl enable entropywatcher-nas.timer >/dev/null 2>&1 || true
+        systemctl start entropywatcher-nas.timer
+
+        systemctl enable entropywatcher-os.timer >/dev/null 2>&1 || true
+        systemctl start entropywatcher-os.timer
+
+        if [[ $INSTALL_CLAMAV -eq 1 ]]; then
+            systemctl enable entropywatcher-nas-av.timer >/dev/null 2>&1 || true
+            systemctl start entropywatcher-nas-av.timer
+
+            systemctl enable entropywatcher-os-av.timer >/dev/null 2>&1 || true
+            systemctl start entropywatcher-os-av.timer
+        fi
+
+        log "✓ Systemd services installed and started"
+    else
+        warn "Systemd directory not found: $SYSTEMD_DIR"
+    fi
+fi
+
+# ============================================================================
+# STEP 9: Test Installation
+# ============================================================================
+log "STEP 9: Testing installation..."
+
+# Test DB connection
+cd "$INSTALL_DIR/main"
+source venv/bin/activate
+
+DB_TEST=$(mysql -u "$DB_USER" -p"$DB_PASSWORD" -h "$DB_HOST" "$DB_NAME" -se "SELECT 1;" 2>/dev/null || echo "FAIL")
+if [[ "$DB_TEST" == "1" ]]; then
+    log "✓ Database connection OK"
+else
+    error "✗ Database connection FAILED"
+fi
+
+# Test ClamAV (if installed)
+if [[ $INSTALL_CLAMAV -eq 1 ]] && [[ -S /var/run/clamav/clamd.ctl ]]; then
+    log "✓ ClamAV daemon OK"
+else
+    if [[ $INSTALL_CLAMAV -eq 1 ]]; then
+        warn "✗ ClamAV daemon not running"
+    fi
+fi
+
+# Test Auditd (if installed)
+if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
+    AUDIT_RULES=$(auditctl -l | grep -c honeyfile || echo 0)
+    if [[ $AUDIT_RULES -gt 0 ]]; then
+        log "✓ Auditd rules active (${AUDIT_RULES} rules)"
+    else
+        warn "✗ Auditd rules not loaded"
+    fi
+fi
+
+# ============================================================================
+# DONE
+# ============================================================================
+log "═══════════════════════════════════════════════════════════"
+log "✅ Installation Complete!"
+log "═══════════════════════════════════════════════════════════"
+echo
+info "Next steps:"
+info "  1. Review configuration: $INSTALL_DIR/main/common.env"
+info "  2. Test mail alerts: python3 $INSTALL_DIR/main/tools/test_mail_config.py"
+info "  3. Check timer status: sudo systemctl list-timers 'entropywatcher*'"
+info "  4. View service logs: sudo journalctl -u entropywatcher-nas.service -f"
+info "  5. Read full documentation: $INSTALL_DIR/main/docs/INSTALLATION.md"
+echo
+log "Installation log: /var/log/entropywatcher-install.log"
+log "═══════════════════════════════════════════════════════════"
+
+exit 0

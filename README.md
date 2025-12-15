@@ -113,23 +113,52 @@ Mit funktionierender lokaler Backup- und Security-Pipeline kam die Frage: **Wie 
 
 ## Installation
 
+### Quick Start – Local Development
+
+For testing and development without systemd integration:
+
 ```bash
 git clone https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner
 cd entropy-watcher-und-clamav-scanner
 
-# Python Virtual Environment erstellen
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Konfiguration
 cp config/common.env.example config/common.env
 cp config/nas.env.example config/nas.env
-# Edit .env files with your settings
-
-# MariaDB Datenbank initialisieren
-sudo mysql < sql/init_db.sql
+# Edit .env files with database credentials and paths
 ```
+
+### Production Installation (Automated)
+
+**Interactive mode (recommended):**
+
+```bash
+sudo ./install.sh --interactive
+```
+
+**Non-interactive mode (CI/CD):**
+
+```bash
+sudo ./install.sh --non-interactive \
+  --db-password "secure_password" \
+  --smtp-host mail.example.com \
+  --smtp-user alerts@example.com \
+  --smtp-password "smtp_password" \
+  --admin-email admin@example.com \
+  --install-clamav
+```
+
+**What gets installed:**
+- MariaDB with `entropywatcher` database
+- Python venv with all dependencies
+- systemd services + timers
+- auditd rules for honeyfile monitoring
+- ClamAV (optional)
+- Complete configuration templates
+
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed setup instructions.
 
 ## Usage
 
