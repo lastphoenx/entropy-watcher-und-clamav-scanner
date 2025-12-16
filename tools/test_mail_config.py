@@ -174,9 +174,9 @@ def main():
         elif sys.argv[1] == '--to' and len(sys.argv) > 2:
             to_override = sys.argv[2]
     
-    # Find common.env
-    script_dir = Path(__file__).parent.parent
-    env_path = script_dir / 'common.env'
+    # Find common.env in config directory
+    script_dir = Path(__file__).parent.parent.parent
+    env_path = script_dir / 'config' / 'common.env'
     
     print("🔍 EntropyWatcher Mail Configuration Test")
     print(f"   Loading config from: {env_path}")
