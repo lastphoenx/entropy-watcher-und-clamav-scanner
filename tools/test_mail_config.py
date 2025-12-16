@@ -53,7 +53,7 @@ def load_env_file(env_path: Path) -> Dict[str, str]:
 
 def validate_config(config: Dict[str, str]) -> tuple[bool, list[str]]:
     """Validate that all required mail settings are present."""
-    required = ['MAIL_SMTP_SERVER', 'MAIL_SMTP_PORT', 'MAIL_FROM', 'MAIL_TO', 'MAIL_USER', 'MAIL_PASSWORD']
+    required = ['MAIL_SMTP_HOST', 'MAIL_SMTP_PORT', 'MAIL_FROM', 'MAIL_TO', 'MAIL_USER', 'MAIL_PASS']
     missing = [key for key in required if not config.get(key)]
     
     if missing:
@@ -73,13 +73,13 @@ def display_config(config: Dict[str, str]):
     """Display current mail configuration (with masked password)."""
     print("\n📧 Current Mail Configuration:")
     print("-" * 50)
-    print(f"SMTP Server:  {config.get('MAIL_SMTP_SERVER', 'NOT SET')}")
+    print(f"SMTP Server:  {config.get('MAIL_SMTP_HOST', 'NOT SET')}")
     print(f"SMTP Port:    {config.get('MAIL_SMTP_PORT', 'NOT SET')}")
     print(f"From:         {config.get('MAIL_FROM', 'NOT SET')}")
     print(f"To:           {config.get('MAIL_TO', 'NOT SET')}")
     print(f"Username:     {config.get('MAIL_USER', 'NOT SET')}")
     
-    password = config.get('MAIL_PASSWORD', '')
+    password = config.get('MAIL_PASS', '')
     if password:
         print(f"Password:     {mask_password(password)}")
     else:
@@ -92,7 +92,7 @@ def test_smtp_connection(config: Dict[str, str]) -> bool:
     print("\n🔌 Testing SMTP connection...", end=' ', flush=True)
     
     try:
-        server = smtplib.SMTP(config['MAIL_SMTP_SERVER'], int(config['MAIL_SMTP_PORT']), timeout=10)
+        server = smtplib.SMTP(config['MAIL_SMTP_HOST'], int(config['MAIL_SMTP_PORT']), timeout=10)
         server.quit()
         print("✅ Connected")
         return True
@@ -107,9 +107,9 @@ def test_smtp_auth(config: Dict[str, str]) -> Optional[smtplib.SMTP]:
     print("🔐 Testing SMTP authentication...", end=' ', flush=True)
     
     try:
-        server = smtplib.SMTP(config['MAIL_SMTP_SERVER'], int(config['MAIL_SMTP_PORT']), timeout=10)
+        server = smtplib.SMTP(config['MAIL_SMTP_HOST'], int(config['MAIL_SMTP_PORT']), timeout=10)
         server.starttls()
-        server.login(config['MAIL_USER'], config['MAIL_PASSWORD'])
+        server.login(config['MAIL_USER'], config['MAIL_PASS'])
         print("✅ Authenticated")
         return server
     except smtplib.SMTPAuthenticationError as e:
@@ -137,7 +137,7 @@ def send_test_email(config: Dict[str, str], server: smtplib.SMTP, to_addr: Optio
         body = f"""This is a test email from EntropyWatcher mail configuration test.
 
 Configuration:
-- SMTP Server: {config['MAIL_SMTP_SERVER']}:{config['MAIL_SMTP_PORT']}
+- SMTP Server: {config['MAIL_SMTP_HOST']}:{config['MAIL_SMTP_PORT']}
 - From: {config['MAIL_FROM']}
 - To: {recipient}
 - Sent at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
