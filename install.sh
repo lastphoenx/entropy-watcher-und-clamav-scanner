@@ -80,6 +80,33 @@ info() {
 }
 
 # ============================================================================
+# Helper Functions (P2 Fix)
+# ============================================================================
+cd_safe() {
+    if ! cd "$1" 2>/dev/null; then
+        error "Cannot change directory to $1"
+        exit 1
+    fi
+}
+
+start_service_if_not_running() {
+    local service="$1"
+    if ! systemctl is-active --quiet "$service"; then
+        log "Starting $service..."
+        systemctl start "$service"
+    else
+        info "$service is already running"
+    fi
+}
+
+enable_service_if_not_enabled() {
+    local service="$1"
+    if ! systemctl is-enabled --quiet "$service" 2>/dev/null; then
+        systemctl enable "$service" >/dev/null 2>&1
+    fi
+}
+
+# ============================================================================
 # Parse Arguments
 # ============================================================================
 while [[ $# -gt 0 ]]; do
@@ -170,6 +197,14 @@ if [[ $EUID -ne 0 ]]; then
     error "This script must be run as root (use sudo)"
     exit 1
 fi
+
+# ============================================================================
+# P3 Fix: Installation Logging
+# ============================================================================
+INSTALL_LOG="/var/log/entropywatcher-install.log"
+info "Installation log: $INSTALL_LOG"
+exec > >(tee -a "$INSTALL_LOG")
+exec 2>&1
 
 # ============================================================================
 # Interactive Prompts
@@ -319,9 +354,16 @@ fi
 if [[ $INIT_DATABASE -eq 1 ]]; then
     log "STEP 2: Setting up MariaDB..."
 
-    # Start MariaDB
-    systemctl enable mariadb >/dev/null 2>&1
-    systemctl start mariadb
+    # P2 Fix: Idempotent Service Start
+    enable_service_if_not_enabled mariadb
+    start_service_if_not_running mariadb
+
+    # P1 Fix: Test MySQL connection first
+    if ! mysql -u root -e "SELECT 1;" >/dev/null 2>&1; then
+        error "Cannot connect to MySQL as root. Check if MariaDB is secured or already configured."
+        error "If root password exists, run: mysql_secure_installation"
+        exit 1
+    fi
 
     # Create Database + User
     log "Creating database and user..."
@@ -337,7 +379,10 @@ GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 
-    log "✓ Database initialized"
+    # P1 Fix: Cleanup sensitive variables
+    unset DB_PASSWORD
+
+    log "✓ Database initialized (password cleared from memory)"
 else
     warn "Skipping database initialization (--skip-db-init)"
 fi
@@ -347,15 +392,14 @@ fi
 # ============================================================================
 log "STEP 3: Setting up Python virtual environment..."
 
-cd "$INSTALL_DIR/main" || {
-    error "Directory $INSTALL_DIR/main not found. Clone the repository first!"
-    exit 1
-}
+# P2 Fix: Use cd_safe helper
+cd_safe "$INSTALL_DIR/main"
 
 python3 -m venv venv
-source venv/bin/activate
-pip install --quiet --upgrade pip
-pip install --quiet -r requirements.txt
+
+# P3 Fix: Direct Python calls instead of source (non-interactive safe)
+./venv/bin/pip install --quiet --upgrade pip
+./venv/bin/pip install --quiet -r requirements.txt
 
 log "✓ Python environment ready"
 
@@ -436,11 +480,11 @@ if [[ $INSTALL_CLAMAV -eq 1 ]]; then
         warn "Freshclam timeout or failed. Signatures might be outdated."
     }
 
-    # Start services
-    systemctl enable clamav-freshclam >/dev/null 2>&1
-    systemctl start clamav-freshclam
-    systemctl enable clamav-daemon >/dev/null 2>&1
-    systemctl start clamav-daemon
+    # Start services (idempotent)
+    enable_service_if_not_enabled clamav-freshclam
+    start_service_if_not_running clamav-freshclam
+    enable_service_if_not_enabled clamav-daemon
+    start_service_if_not_running clamav-daemon
 
     # Wait for socket
     for i in {1..30}; do
@@ -462,9 +506,9 @@ fi
 if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
     log "STEP 6: Setting up Honeyfiles + Auditd..."
 
-    # Start Auditd
-    systemctl enable auditd >/dev/null 2>&1
-    systemctl start auditd
+    # Start Auditd (idempotent)
+    enable_service_if_not_enabled auditd
+    start_service_if_not_running auditd
 
     # Create config directory
     mkdir -p "$INSTALL_DIR/config"
@@ -497,8 +541,7 @@ fi
 log "STEP 7: Initializing database tables..."
 
 # Run entropywatcher.py once to create tables
-cd "$INSTALL_DIR/main"
-source venv/bin/activate
+cd_safe "$INSTALL_DIR/main"
 
 # Use --help to trigger table creation without actual scan
 venv/bin/python3 entropywatcher.py --help >/dev/null 2>&1 || true
@@ -551,8 +594,7 @@ fi
 log "STEP 9: Testing installation..."
 
 # Test DB connection
-cd "$INSTALL_DIR/main"
-source venv/bin/activate
+cd_safe "$INSTALL_DIR/main"
 
 DB_TEST=$(mysql -u "$DB_USER" -p"$DB_PASSWORD" -h "$DB_HOST" "$DB_NAME" -se "SELECT 1;" 2>/dev/null || echo "FAIL")
 if [[ "$DB_TEST" == "1" ]]; then
