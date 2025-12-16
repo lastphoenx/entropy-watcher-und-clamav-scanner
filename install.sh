@@ -20,8 +20,6 @@
 #   --os-paths PATHS           OS scan paths (comma-separated)
 #   --install-clamav           Install ClamAV + Daemon
 #   --skip-clamav              Skip ClamAV installation
-#   --install-honeyfiles       Install Honeyfiles + Auditd
-#   --skip-honeyfiles          Skip Honeyfiles installation
 #   --skip-systemd             Skip systemd service installation
 #   --skip-db-init             Skip database initialization
 #   --install-dir PATH         Installation directory (default: /opt/apps/entropywatcher)
@@ -33,7 +31,6 @@ set -euo pipefail
 # ============================================================================
 INTERACTIVE=0
 INSTALL_CLAMAV=""
-INSTALL_HONEYFILES=""
 INSTALL_SYSTEMD=1
 INIT_DATABASE=1
 
@@ -165,14 +162,6 @@ while [[ $# -gt 0 ]]; do
             INSTALL_CLAMAV=0
             shift
             ;;
-        --install-honeyfiles)
-            INSTALL_HONEYFILES=1
-            shift
-            ;;
-        --skip-honeyfiles)
-            INSTALL_HONEYFILES=0
-            shift
-            ;;
         --skip-systemd)
             INSTALL_SYSTEMD=0
             shift
@@ -247,12 +236,6 @@ if [[ $INTERACTIVE -eq 1 ]]; then
         *) INSTALL_CLAMAV=1 ;;
     esac
 
-    read -p "Install Honeyfiles + Auditd? [Y/n]: " HONEYFILE_CHOICE
-    case "$HONEYFILE_CHOICE" in
-        [Nn]*) INSTALL_HONEYFILES=0 ;;
-        *) INSTALL_HONEYFILES=1 ;;
-    esac
-
     echo
 fi
 
@@ -271,9 +254,6 @@ if [[ $INTERACTIVE -eq 0 ]]; then
     # Auto-decide on optional components if not specified
     if [[ -z "$INSTALL_CLAMAV" ]]; then
         INSTALL_CLAMAV=1  # Default: install
-    fi
-    if [[ -z "$INSTALL_HONEYFILES" ]]; then
-        INSTALL_HONEYFILES=1  # Default: install
     fi
 fi
 
@@ -295,7 +275,6 @@ info "Admin Email: $ADMIN_EMAIL"
 info "NAS Paths: $NAS_PATHS"
 info "OS Paths: $OS_PATHS"
 info "Install ClamAV: $([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'YES' || echo 'NO')"
-info "Install Honeyfiles: $([ "$INSTALL_HONEYFILES" -eq 1 ] && echo 'YES' || echo 'NO')"
 info "Install Systemd Services: $([ "$INSTALL_SYSTEMD" -eq 1 ] && echo 'YES' || echo 'NO')"
 log "═══════════════════════════════════════════════════════════"
 echo
@@ -371,13 +350,6 @@ if [[ $INSTALL_CLAMAV -eq 1 ]]; then
     log "✓ ClamAV installed"
 fi
 
-# Auditd
-if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
-    log "Installing Auditd..."
-    apt-get install -y -qq auditd audispd-plugins
-    log "✓ Auditd installed"
-fi
-
 # ============================================================================
 # STEP 2: MariaDB Setup
 # ============================================================================
@@ -431,87 +403,45 @@ python3 -m venv venv
 log "✓ Python environment ready"
 
 # ============================================================================
-# STEP 4: Create common.env
+# STEP 4: Setup common.env from template
 # ============================================================================
-log "STEP 4: Creating common.env..."
+log "STEP 4: Setting up common.env..."
 
-# Ensure config directory exists (ONLY at /opt/apps/entropywatcher/config)
+# Ensure config directory exists
 mkdir -p "$INSTALL_DIR/config"
 
-cat > "$INSTALL_DIR/config/common.env" <<'EOFCONFIG'
-# ============================================================================
-# EntropyWatcher Configuration
-# Generated: TIMESTAMP_PLACEHOLDER
-# ============================================================================
+# Copy template from repo
+if [[ -f "$INSTALL_DIR/main/config/common.env.example" ]]; then
+    cp "$INSTALL_DIR/main/config/common.env.example" "$INSTALL_DIR/config/common.env"
+    log "✓ Copied template from repo"
+else
+    error "Template not found: $INSTALL_DIR/main/config/common.env.example"
+    exit 1
+fi
 
-# ============================================================================
-# DATABASE
-# ============================================================================
-DB_HOST=DB_HOST_PLACEHOLDER
-DB_PORT=DB_PORT_PLACEHOLDER
-DB_NAME=DB_NAME_PLACEHOLDER
-DB_USER=DB_USER_PLACEHOLDER
-DB_PASSWORD=DB_PASSWORD_PLACEHOLDER
+# Replace placeholders with actual values from interactive input
+sed -i "s|<DB_HOST>|${DB_HOST}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<DB_USER>|${DB_USER}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<DB_PASSWORD>|${DB_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<YOUR_EMAIL>|${ADMIN_EMAIL}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<MAIL_PASSWORD>|${SMTP_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
 
-# ============================================================================
-# MAIL ALERTS
-# ============================================================================
-SMTP_HOST=SMTP_HOST_PLACEHOLDER
-SMTP_PORT=SMTP_PORT_PLACEHOLDER
-SMTP_USER=SMTP_USER_PLACEHOLDER
-SMTP_PASSWORD=SMTP_PASSWORD_PLACEHOLDER
-SMTP_FROM=SMTP_FROM_PLACEHOLDER
-ADMIN_EMAIL=ADMIN_EMAIL_PLACEHOLDER
-
-# ============================================================================
-# SCAN PATHS
-# ============================================================================
-NAS_SCAN_PATHS=NAS_PATHS_PLACEHOLDER
-NAS_SCAN_EXCLUDES=**/.git/**,**/*.swp,**/token.env,**/.Trash-*/**,**/@Recycle/**
-
-OS_SCAN_PATHS=OS_PATHS_PLACEHOLDER
-OS_SCAN_EXCLUDES=/proc/**,/sys/**,/dev/**,/run/**,/tmp/**,/var/cache/**,/var/tmp/**,/snap/**,**/.git/**
-
-# ============================================================================
-# CLAMAV
-# ============================================================================
-CLAMAV_ENABLED=CLAMAV_ENABLED_PLACEHOLDER
-CLAMSCAN_BIN=/usr/bin/clamdscan
-CLAMD_SOCKET=/var/run/clamav/clamd.ctl
-
-# ============================================================================
-# SAFETY GATE
-# ============================================================================
-SAFETY_GATE_FILE=/run/entropywatcher-safety-gate
-SAFETY_GATE_LOCKFILE=/run/backup_pipeline.lock
-
-# ============================================================================
-# HONEYFILES
-# ============================================================================
-HONEYFILE_PATHS_FILE=INSTALL_DIR_PLACEHOLDER/honeyfile_paths
-AUDITD_RULES_FILE=INSTALL_DIR_PLACEHOLDER/auditd_honeyfiles.rules
-EOFCONFIG
-
-# Substitute placeholders with actual values using sed
-sed -i "s|TIMESTAMP_PLACEHOLDER|$(date '+%F %T')|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|DB_HOST_PLACEHOLDER|${DB_HOST}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|DB_PORT_PLACEHOLDER|${DB_PORT}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|DB_USER_PLACEHOLDER|${DB_USER}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|DB_PASSWORD_PLACEHOLDER|${DB_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|SMTP_HOST_PLACEHOLDER|${SMTP_HOST}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|SMTP_PORT_PLACEHOLDER|${SMTP_PORT}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|SMTP_USER_PLACEHOLDER|${SMTP_USER}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|SMTP_PASSWORD_PLACEHOLDER|${SMTP_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|SMTP_FROM_PLACEHOLDER|${SMTP_FROM}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|ADMIN_EMAIL_PLACEHOLDER|${ADMIN_EMAIL}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|NAS_PATHS_PLACEHOLDER|${NAS_PATHS}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|OS_PATHS_PLACEHOLDER|${OS_PATHS}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|CLAMAV_ENABLED_PLACEHOLDER|$([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'true' || echo 'false')|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|INSTALL_DIR_PLACEHOLDER|${INSTALL_DIR}|g" "$INSTALL_DIR/config/common.env"
+# Update SMTP settings if provided
+if [[ -n "$SMTP_HOST" ]]; then
+    sed -i "s|MAIL_SMTP_HOST=.*|MAIL_SMTP_HOST=${SMTP_HOST}|g" "$INSTALL_DIR/config/common.env"
+fi
+if [[ -n "$SMTP_PORT" ]]; then
+    sed -i "s|MAIL_SMTP_PORT=.*|MAIL_SMTP_PORT=${SMTP_PORT}|g" "$INSTALL_DIR/config/common.env"
+fi
+if [[ -n "$SMTP_USER" ]]; then
+    sed -i "s|MAIL_USER=.*|MAIL_USER='${SMTP_USER}'|g" "$INSTALL_DIR/config/common.env"
+fi
+if [[ -n "$ADMIN_EMAIL" ]]; then
+    sed -i "s|MAIL_FROM=.*|MAIL_FROM=${ADMIN_EMAIL}|g" "$INSTALL_DIR/config/common.env"
+fi
 
 chmod 600 "$INSTALL_DIR/config/common.env"
-log "✓ common.env created (chmod 600)"
+log "✓ common.env configured (chmod 600)"
 
 # Copy other .env.example files from repo to config/ (SKIP common.env.example!)
 log "Processing .env.example templates from repo..."
@@ -529,6 +459,17 @@ if [[ -d "$INSTALL_DIR/main/config" ]]; then
             log "  ✓ $(basename "$target_file")"
         fi
     done
+fi
+
+# Update scan paths from user input
+if [[ -f "$INSTALL_DIR/config/nas.env" ]]; then
+    sed -i "s|SCAN_PATHS=.*|SCAN_PATHS=\"${NAS_PATHS}\"|g" "$INSTALL_DIR/config/nas.env"
+    log "✓ nas.env: SCAN_PATHS set to $NAS_PATHS"
+fi
+
+if [[ -f "$INSTALL_DIR/config/os.env" ]]; then
+    sed -i "s|SCAN_PATHS=.*|SCAN_PATHS=\"${OS_PATHS}\"|g" "$INSTALL_DIR/config/os.env"
+    log "✓ os.env: SCAN_PATHS set to $OS_PATHS"
 fi
 
 # ============================================================================
@@ -567,40 +508,9 @@ if [[ $INSTALL_CLAMAV -eq 1 ]]; then
 fi
 
 # ============================================================================
-# STEP 6: Honeyfiles + Auditd
+# STEP 6: Initialize Database Tables
 # ============================================================================
-if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
-    log "STEP 6: Setting up Honeyfiles + Auditd..."
-
-    # Start Auditd (idempotent)
-    enable_service_if_not_enabled auditd
-    start_service_if_not_running auditd
-
-    # Run setup_honeyfiles.sh
-    if [[ -x "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" ]]; then
-        "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" || {
-            warn "setup_honeyfiles.sh failed - honeyfiles might not be created"
-        }
-        log "✓ Honeyfiles setup completed"
-    else
-        warn "setup_honeyfiles.sh not found or not executable"
-    fi
-
-    # Load auditd rules
-    if [[ -f "$INSTALL_DIR/config/auditd_honeyfiles.rules" ]]; then
-        auditctl -R "$INSTALL_DIR/config/auditd_honeyfiles.rules" || {
-            warn "Failed to load auditd rules"
-        }
-        # Make persistent
-        cp "$INSTALL_DIR/config/auditd_honeyfiles.rules" /etc/audit/rules.d/honeyfiles.rules
-        log "✓ Auditd rules loaded"
-    fi
-fi
-
-# ============================================================================
-# STEP 7: Initialize Database Tables
-# ============================================================================
-log "STEP 7: Initializing database tables..."
+log "STEP 6: Initializing database tables..."
 
 cd_safe "$INSTALL_DIR/main"
 
@@ -620,10 +530,10 @@ else
 fi
 
 # ============================================================================
-# STEP 8: Install Systemd Services
+# STEP 7: Install Systemd Services
 # ============================================================================
 if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
-    log "STEP 8: Installing systemd services..."
+    log "STEP 7: Installing systemd services..."
 
     SYSTEMD_DIR="$INSTALL_DIR/main/systemd"
     if [[ -d "$SYSTEMD_DIR" ]]; then
@@ -659,9 +569,9 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
 fi
 
 # ============================================================================
-# STEP 9: Test Installation
+# STEP 8: Test Installation
 # ============================================================================
-log "STEP 9: Testing installation..."
+log "STEP 8: Testing installation..."
 
 # Test DB connection
 cd_safe "$INSTALL_DIR/main"
@@ -682,20 +592,10 @@ else
     fi
 fi
 
-# Test Auditd (if installed)
-if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
-    AUDIT_RULES=$(auditctl -l 2>/dev/null | grep -c honeyfile || true)
-    if [[ $AUDIT_RULES -gt 0 ]]; then
-        log "✓ Auditd rules active (${AUDIT_RULES} rules)"
-    else
-        warn "✗ Auditd rules not loaded (expected in WSL)"
-    fi
-fi
-
 # ============================================================================
 # P1 Fix: Cleanup Sensitive Variables
 # ============================================================================
-# Passwort erst NACH allen DB-Operationen (STEP 2, 4, 7, 9) löschen
+# Passwords must be cleaned AFTER all operations (STEP 2, 4, 6, 8)
 unset DB_PASSWORD
 unset SMTP_PASSWORD
 
