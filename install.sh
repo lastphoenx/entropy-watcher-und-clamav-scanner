@@ -566,18 +566,21 @@ fi
 # ============================================================================
 log "STEP 7: Initializing database tables..."
 
-# Run entropywatcher.py once to create tables
 cd_safe "$INSTALL_DIR/main"
 
-# Use --help to trigger table creation without actual scan
-venv/bin/python3 entropywatcher.py --help >/dev/null 2>&1 || true
+# Use sql/init_db.sql if available
+if [[ -f "$INSTALL_DIR/main/sql/init_db.sql" ]]; then
+    mysql -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$INSTALL_DIR/main/sql/init_db.sql" 2>/dev/null || {
+        warn "Failed to initialize database from sql/init_db.sql"
+    }
+fi
 
 # Verify tables exist
 TABLES=$(mysql -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -se "SHOW TABLES;" 2>/dev/null | wc -l)
 if [[ $TABLES -ge 5 ]]; then
     log "✓ Database tables created (${TABLES} tables)"
 else
-    warn "Database tables might not be created. Run a manual scan to initialize."
+    warn "Database tables might not be created. Check sql/init_db.sql"
 fi
 
 # ============================================================================
@@ -588,8 +591,13 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
 
     SYSTEMD_DIR="$INSTALL_DIR/main/systemd"
     if [[ -d "$SYSTEMD_DIR" ]]; then
-        cp "$SYSTEMD_DIR"/*.service /etc/systemd/system/ 2>/dev/null || true
-        cp "$SYSTEMD_DIR"/*.timer /etc/systemd/system/ 2>/dev/null || true
+        # Rename .example files to actual service/timer files
+        for file in "$SYSTEMD_DIR"/*.example; do
+            if [[ -f "$file" ]]; then
+                dest="/etc/systemd/system/$(basename "$file" .example)"
+                cp "$file" "$dest"
+            fi
+        done
 
         systemctl daemon-reload
 
