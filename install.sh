@@ -95,7 +95,7 @@ start_service_if_not_running() {
     local service="$1"
     if ! systemctl is-active --quiet "$service"; then
         log "Starting $service..."
-        systemctl start "$service"
+        systemctl start "$service" || warn "Failed to start $service (might be unavailable on this system)"
     else
         info "$service is already running"
     fi
@@ -104,7 +104,7 @@ start_service_if_not_running() {
 enable_service_if_not_enabled() {
     local service="$1"
     if ! systemctl is-enabled --quiet "$service" 2>/dev/null; then
-        systemctl enable "$service" >/dev/null 2>&1
+        systemctl enable "$service" >/dev/null 2>&1 || warn "Failed to enable $service (might be unavailable on this system)"
     fi
 }
 
