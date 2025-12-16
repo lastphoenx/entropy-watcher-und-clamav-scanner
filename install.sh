@@ -435,10 +435,10 @@ log "✓ Python environment ready"
 # ============================================================================
 log "STEP 4: Creating common.env..."
 
-# Ensure config directory exists
-mkdir -p "$INSTALL_DIR/main/config"
+# Ensure config directory exists (ONLY at /opt/apps/entropywatcher/config)
+mkdir -p "$INSTALL_DIR/config"
 
-cat > "$INSTALL_DIR/main/config/common.env" <<'EOFCONFIG'
+cat > "$INSTALL_DIR/config/common.env" <<'EOFCONFIG'
 # ============================================================================
 # EntropyWatcher Configuration
 # Generated: TIMESTAMP_PLACEHOLDER
@@ -488,8 +488,8 @@ SAFETY_GATE_LOCKFILE=/run/backup_pipeline.lock
 # ============================================================================
 # HONEYFILES
 # ============================================================================
-HONEYFILE_PATHS_FILE=INSTALL_DIR_PLACEHOLDER/config/honeyfile_paths
-AUDITD_RULES_FILE=INSTALL_DIR_PLACEHOLDER/config/auditd_honeyfiles.rules
+HONEYFILE_PATHS_FILE=INSTALL_DIR_PLACEHOLDER/honeyfile_paths
+AUDITD_RULES_FILE=INSTALL_DIR_PLACEHOLDER/auditd_honeyfiles.rules
 EOFCONFIG
 
 # Substitute placeholders with actual values using sed
@@ -514,16 +514,18 @@ chmod 600 "$INSTALL_DIR/config/common.env"
 log "✓ common.env created (chmod 600)"
 
 # Copy other .env.example files from repo to config/ (without .example extension)
-log "Processing .env.example templates..."
-for example_file in "$INSTALL_DIR/main/config"/*.env.example; do
-    if [[ -f "$example_file" ]]; then
-        filename=$(basename "$example_file")
-        target_file="$INSTALL_DIR/config/${filename%.example}"
-        cp "$example_file" "$target_file"
-        chmod 600 "$target_file"
-        log "  ✓ $(basename "$target_file")"
-    fi
-done
+log "Processing .env.example templates from repo..."
+if [[ -d "$INSTALL_DIR/main/config" ]]; then
+    for example_file in "$INSTALL_DIR/main/config"/*.env.example; do
+        if [[ -f "$example_file" ]]; then
+            filename=$(basename "$example_file")
+            target_file="$INSTALL_DIR/config/${filename%.example}"
+            cp "$example_file" "$target_file"
+            chmod 600 "$target_file"
+            log "  ✓ $(basename "$target_file")"
+        fi
+    done
+fi
 
 # ============================================================================
 # STEP 5: ClamAV Setup
@@ -569,9 +571,6 @@ if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
     # Start Auditd (idempotent)
     enable_service_if_not_enabled auditd
     start_service_if_not_running auditd
-
-    # Create config directory
-    mkdir -p "$INSTALL_DIR/config"
 
     # Run setup_honeyfiles.sh
     if [[ -x "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" ]]; then
