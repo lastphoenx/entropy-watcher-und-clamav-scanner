@@ -513,12 +513,16 @@ sed -i "s|INSTALL_DIR_PLACEHOLDER|${INSTALL_DIR}|g" "$INSTALL_DIR/config/common.
 chmod 600 "$INSTALL_DIR/config/common.env"
 log "✓ common.env created (chmod 600)"
 
-# Copy other .env.example files from repo to config/ (without .example extension)
+# Copy other .env.example files from repo to config/ (SKIP common.env.example!)
 log "Processing .env.example templates from repo..."
 if [[ -d "$INSTALL_DIR/main/config" ]]; then
     for example_file in "$INSTALL_DIR/main/config"/*.env.example; do
         if [[ -f "$example_file" ]]; then
             filename=$(basename "$example_file")
+            # Skip common.env.example - already generated with real values above
+            if [[ "$filename" == "common.env.example" ]]; then
+                continue
+            fi
             target_file="$INSTALL_DIR/config/${filename%.example}"
             cp "$example_file" "$target_file"
             chmod 600 "$target_file"
