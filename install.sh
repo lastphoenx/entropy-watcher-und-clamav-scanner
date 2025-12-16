@@ -433,46 +433,49 @@ log "✓ Python environment ready"
 # ============================================================================
 # STEP 4: Create common.env
 # ============================================================================
-log "STEP 4: Creating common.env..."
+log "STEP 4: Creating common.env...
 
-cat > "$INSTALL_DIR/main/common.env" <<EOF
+# Ensure config directory exists
+mkdir -p "$INSTALL_DIR/main/config"
+
+cat > "$INSTALL_DIR/main/config/common.env" <<'EOFCONFIG'
 # ============================================================================
 # EntropyWatcher Configuration
-# Generated: $(date '+%F %T')
+# Generated: TIMESTAMP_PLACEHOLDER
 # ============================================================================
 
 # ============================================================================
 # DATABASE
 # ============================================================================
-DB_HOST=${DB_HOST}
-DB_PORT=${DB_PORT}
-DB_NAME=${DB_NAME}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASSWORD}
+DB_HOST=DB_HOST_PLACEHOLDER
+DB_PORT=DB_PORT_PLACEHOLDER
+DB_NAME=DB_NAME_PLACEHOLDER
+DB_USER=DB_USER_PLACEHOLDER
+DB_PASSWORD=DB_PASSWORD_PLACEHOLDER
 
 # ============================================================================
 # MAIL ALERTS
 # ============================================================================
-SMTP_HOST=${SMTP_HOST}
-SMTP_PORT=${SMTP_PORT}
-SMTP_USER=${SMTP_USER}
-SMTP_PASSWORD=${SMTP_PASSWORD}
-SMTP_FROM=${SMTP_FROM}
-ADMIN_EMAIL=${ADMIN_EMAIL}
+SMTP_HOST=SMTP_HOST_PLACEHOLDER
+SMTP_PORT=SMTP_PORT_PLACEHOLDER
+SMTP_USER=SMTP_USER_PLACEHOLDER
+SMTP_PASSWORD=SMTP_PASSWORD_PLACEHOLDER
+SMTP_FROM=SMTP_FROM_PLACEHOLDER
+ADMIN_EMAIL=ADMIN_EMAIL_PLACEHOLDER
 
 # ============================================================================
 # SCAN PATHS
 # ============================================================================
-NAS_SCAN_PATHS=${NAS_PATHS}
+NAS_SCAN_PATHS=NAS_PATHS_PLACEHOLDER
 NAS_SCAN_EXCLUDES=**/.git/**,**/*.swp,**/token.env,**/.Trash-*/**,**/@Recycle/**
 
-OS_SCAN_PATHS=${OS_PATHS}
+OS_SCAN_PATHS=OS_PATHS_PLACEHOLDER
 OS_SCAN_EXCLUDES=/proc/**,/sys/**,/dev/**,/run/**,/tmp/**,/var/cache/**,/var/tmp/**,/snap/**,**/.git/**
 
 # ============================================================================
 # CLAMAV
 # ============================================================================
-CLAMAV_ENABLED=$([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'true' || echo 'false')
+CLAMAV_ENABLED=CLAMAV_ENABLED_PLACEHOLDER
 CLAMSCAN_BIN=/usr/bin/clamdscan
 CLAMD_SOCKET=/var/run/clamav/clamd.ctl
 
@@ -485,12 +488,41 @@ SAFETY_GATE_LOCKFILE=/run/backup_pipeline.lock
 # ============================================================================
 # HONEYFILES
 # ============================================================================
-HONEYFILE_PATHS_FILE=${INSTALL_DIR}/config/honeyfile_paths
-AUDITD_RULES_FILE=${INSTALL_DIR}/config/auditd_honeyfiles.rules
-EOF
+HONEYFILE_PATHS_FILE=INSTALL_DIR_PLACEHOLDER/config/honeyfile_paths
+AUDITD_RULES_FILE=INSTALL_DIR_PLACEHOLDER/config/auditd_honeyfiles.rules
+EOFCONFIG
 
-chmod 600 "$INSTALL_DIR/main/common.env"
+# Substitute placeholders with actual values using sed
+sed -i "s|TIMESTAMP_PLACEHOLDER|$(date '+%F %T')|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|DB_HOST_PLACEHOLDER|${DB_HOST}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|DB_PORT_PLACEHOLDER|${DB_PORT}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|DB_USER_PLACEHOLDER|${DB_USER}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|DB_PASSWORD_PLACEHOLDER|${DB_PASSWORD}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|SMTP_HOST_PLACEHOLDER|${SMTP_HOST}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|SMTP_PORT_PLACEHOLDER|${SMTP_PORT}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|SMTP_USER_PLACEHOLDER|${SMTP_USER}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|SMTP_PASSWORD_PLACEHOLDER|${SMTP_PASSWORD}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|SMTP_FROM_PLACEHOLDER|${SMTP_FROM}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|ADMIN_EMAIL_PLACEHOLDER|${ADMIN_EMAIL}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|NAS_PATHS_PLACEHOLDER|${NAS_PATHS}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|OS_PATHS_PLACEHOLDER|${OS_PATHS}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|CLAMAV_ENABLED_PLACEHOLDER|$([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'true' || echo 'false')|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|INSTALL_DIR_PLACEHOLDER|${INSTALL_DIR}|g" "$INSTALL_DIR/main/config/common.env"
+
+chmod 600 "$INSTALL_DIR/main/config/common.env"
 log "✓ common.env created (chmod 600)"
+
+# Copy other .env.example files to .env (without .example extension)
+log "Processing config .env.example files..."
+for example_file in "$INSTALL_DIR/main/config"/*.env.example; do
+    if [[ -f "$example_file" ]]; then
+        target_file="${example_file%.example}"
+        cp "$example_file" "$target_file"
+        chmod 600 "$target_file"
+        log "  ✓ $(basename "$target_file")"
+    fi
+done
 
 # ============================================================================
 # STEP 5: ClamAV Setup
@@ -671,7 +703,7 @@ log "✅ Installation Complete!"
 log "═══════════════════════════════════════════════════════════"
 echo
 info "Next steps:"
-info "  1. Review configuration: $INSTALL_DIR/main/common.env"
+info "  1. Review configuration: $INSTALL_DIR/main/config/common.env"
 info "  2. Test mail alerts: python3 $INSTALL_DIR/main/tools/test_mail_config.py"
 info "  3. Check timer status: sudo systemctl list-timers 'entropywatcher*'"
 info "  4. View service logs: sudo journalctl -u entropywatcher-nas.service -f"
