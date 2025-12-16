@@ -542,11 +542,10 @@ if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
 
     # Run setup_honeyfiles.sh
     if [[ -x "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" ]]; then
-        "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" \
-            --non-interactive \
-            --base-dir "$INSTALL_DIR/honeyfiles" \
-            --config-dir "$INSTALL_DIR/config"
-        log "✓ Honeyfiles created"
+        "$INSTALL_DIR/main/tools/setup_honeyfiles.sh" || {
+            warn "setup_honeyfiles.sh failed - honeyfiles might not be created"
+        }
+        log "✓ Honeyfiles setup completed"
     else
         warn "setup_honeyfiles.sh not found or not executable"
     fi
