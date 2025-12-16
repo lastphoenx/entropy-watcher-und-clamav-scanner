@@ -38,6 +38,8 @@ INSTALL_SYSTEMD=1
 INIT_DATABASE=1
 
 INSTALL_DIR="/opt/apps/entropywatcher"
+GITHUB_REPO="https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner.git"
+
 DB_HOST="localhost"
 DB_PORT="3306"
 DB_NAME="entropywatcher"
@@ -306,6 +308,34 @@ if [[ $INTERACTIVE -eq 1 ]]; then
             exit 0
             ;;
     esac
+fi
+
+# ============================================================================
+# STEP 0: Clone Repository (if needed)
+# ============================================================================
+if [[ ! -d "$INSTALL_DIR/main" ]]; then
+    log "STEP 0: Cloning repository..."
+    
+    # Install git first if not available
+    if ! command -v git &> /dev/null; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -y -qq git
+    fi
+    
+    # Create directory structure
+    mkdir -p "$INSTALL_DIR"
+    
+    # Clone repository
+    log "Cloning from $GITHUB_REPO..."
+    if ! git clone "$GITHUB_REPO" "$INSTALL_DIR/main"; then
+        error "Failed to clone repository from $GITHUB_REPO"
+        exit 1
+    fi
+    
+    log "✓ Repository cloned to $INSTALL_DIR/main"
+else
+    info "Repository already exists at $INSTALL_DIR/main (skipping clone)"
 fi
 
 # ============================================================================
