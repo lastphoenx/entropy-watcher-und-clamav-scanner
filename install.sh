@@ -493,31 +493,32 @@ AUDITD_RULES_FILE=INSTALL_DIR_PLACEHOLDER/config/auditd_honeyfiles.rules
 EOFCONFIG
 
 # Substitute placeholders with actual values using sed
-sed -i "s|TIMESTAMP_PLACEHOLDER|$(date '+%F %T')|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|DB_HOST_PLACEHOLDER|${DB_HOST}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|DB_PORT_PLACEHOLDER|${DB_PORT}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|DB_USER_PLACEHOLDER|${DB_USER}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|DB_PASSWORD_PLACEHOLDER|${DB_PASSWORD}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|SMTP_HOST_PLACEHOLDER|${SMTP_HOST}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|SMTP_PORT_PLACEHOLDER|${SMTP_PORT}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|SMTP_USER_PLACEHOLDER|${SMTP_USER}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|SMTP_PASSWORD_PLACEHOLDER|${SMTP_PASSWORD}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|SMTP_FROM_PLACEHOLDER|${SMTP_FROM}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|ADMIN_EMAIL_PLACEHOLDER|${ADMIN_EMAIL}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|NAS_PATHS_PLACEHOLDER|${NAS_PATHS}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|OS_PATHS_PLACEHOLDER|${OS_PATHS}|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|CLAMAV_ENABLED_PLACEHOLDER|$([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'true' || echo 'false')|g" "$INSTALL_DIR/main/config/common.env"
-sed -i "s|INSTALL_DIR_PLACEHOLDER|${INSTALL_DIR}|g" "$INSTALL_DIR/main/config/common.env"
+sed -i "s|TIMESTAMP_PLACEHOLDER|$(date '+%F %T')|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|DB_HOST_PLACEHOLDER|${DB_HOST}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|DB_PORT_PLACEHOLDER|${DB_PORT}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|DB_USER_PLACEHOLDER|${DB_USER}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|DB_PASSWORD_PLACEHOLDER|${DB_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|SMTP_HOST_PLACEHOLDER|${SMTP_HOST}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|SMTP_PORT_PLACEHOLDER|${SMTP_PORT}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|SMTP_USER_PLACEHOLDER|${SMTP_USER}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|SMTP_PASSWORD_PLACEHOLDER|${SMTP_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|SMTP_FROM_PLACEHOLDER|${SMTP_FROM}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|ADMIN_EMAIL_PLACEHOLDER|${ADMIN_EMAIL}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|NAS_PATHS_PLACEHOLDER|${NAS_PATHS}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|OS_PATHS_PLACEHOLDER|${OS_PATHS}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|CLAMAV_ENABLED_PLACEHOLDER|$([ "$INSTALL_CLAMAV" -eq 1 ] && echo 'true' || echo 'false')|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|INSTALL_DIR_PLACEHOLDER|${INSTALL_DIR}|g" "$INSTALL_DIR/config/common.env"
 
-chmod 600 "$INSTALL_DIR/main/config/common.env"
+chmod 600 "$INSTALL_DIR/config/common.env"
 log "✓ common.env created (chmod 600)"
 
-# Copy other .env.example files to .env (without .example extension)
-log "Processing config .env.example files..."
+# Copy other .env.example files from repo to config/ (without .example extension)
+log "Processing .env.example templates..."
 for example_file in "$INSTALL_DIR/main/config"/*.env.example; do
     if [[ -f "$example_file" ]]; then
-        target_file="${example_file%.example}"
+        filename=$(basename "$example_file")
+        target_file="$INSTALL_DIR/config/${filename%.example}"
         cp "$example_file" "$target_file"
         chmod 600 "$target_file"
         log "  ✓ $(basename "$target_file")"
@@ -703,7 +704,7 @@ log "✅ Installation Complete!"
 log "═══════════════════════════════════════════════════════════"
 echo
 info "Next steps:"
-info "  1. Review configuration: $INSTALL_DIR/main/config/common.env"
+info "  1. Review configuration: $INSTALL_DIR/config/common.env"
 info "  2. Test mail alerts: python3 $INSTALL_DIR/main/tools/test_mail_config.py"
 info "  3. Check timer status: sudo systemctl list-timers 'entropywatcher*'"
 info "  4. View service logs: sudo journalctl -u entropywatcher-nas.service -f"
