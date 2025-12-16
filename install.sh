@@ -648,11 +648,11 @@ fi
 
 # Test Auditd (if installed)
 if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
-    AUDIT_RULES=$(auditctl -l | grep -c honeyfile || echo 0)
+    AUDIT_RULES=$(auditctl -l 2>/dev/null | grep -c honeyfile || true)
     if [[ $AUDIT_RULES -gt 0 ]]; then
         log "✓ Auditd rules active (${AUDIT_RULES} rules)"
     else
-        warn "✗ Auditd rules not loaded"
+        warn "✗ Auditd rules not loaded (expected in WSL)"
     fi
 fi
 
