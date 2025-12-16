@@ -379,10 +379,7 @@ GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 
-    # P1 Fix: Cleanup sensitive variables
-    unset DB_PASSWORD
-
-    log "✓ Database initialized (password cleared from memory)"
+    log "✓ Database initialized"
 else
     warn "Skipping database initialization (--skip-db-init)"
 fi
@@ -621,6 +618,13 @@ if [[ $INSTALL_HONEYFILES -eq 1 ]]; then
         warn "✗ Auditd rules not loaded"
     fi
 fi
+
+# ============================================================================
+# P1 Fix: Cleanup Sensitive Variables
+# ============================================================================
+# Passwort erst NACH allen DB-Operationen (STEP 2, 4, 7, 9) löschen
+unset DB_PASSWORD
+unset SMTP_PASSWORD
 
 # ============================================================================
 # DONE
