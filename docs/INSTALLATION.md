@@ -1,4 +1,4 @@
-# EntropyWatcher Installation Guide
+ EntropyWatcher Installation Guide
 
 Complete production deployment guide for EntropyWatcher & ClamAV Scanner.
 
