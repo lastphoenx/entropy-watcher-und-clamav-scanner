@@ -603,17 +603,17 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
 
         # Enable timers
         systemctl enable entropywatcher-nas.timer >/dev/null 2>&1 || true
-        systemctl start entropywatcher-nas.timer
+        systemctl start entropywatcher-nas.timer || warn "Failed to start entropywatcher-nas.timer"
 
         systemctl enable entropywatcher-os.timer >/dev/null 2>&1 || true
-        systemctl start entropywatcher-os.timer
+        systemctl start entropywatcher-os.timer || warn "Failed to start entropywatcher-os.timer"
 
         if [[ $INSTALL_CLAMAV -eq 1 ]]; then
             systemctl enable entropywatcher-nas-av.timer >/dev/null 2>&1 || true
-            systemctl start entropywatcher-nas-av.timer
+            systemctl start entropywatcher-nas-av.timer || warn "Failed to start entropywatcher-nas-av.timer"
 
             systemctl enable entropywatcher-os-av.timer >/dev/null 2>&1 || true
-            systemctl start entropywatcher-os-av.timer
+            systemctl start entropywatcher-os-av.timer || warn "Failed to start entropywatcher-os-av.timer"
         fi
 
         log "✓ Systemd services installed and started"
