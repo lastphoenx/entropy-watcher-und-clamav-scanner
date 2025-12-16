@@ -433,7 +433,7 @@ log "✓ Python environment ready"
 # ============================================================================
 # STEP 4: Create common.env
 # ============================================================================
-log "STEP 4: Creating common.env...
+log "STEP 4: Creating common.env..."
 
 # Ensure config directory exists
 mkdir -p "$INSTALL_DIR/main/config"
