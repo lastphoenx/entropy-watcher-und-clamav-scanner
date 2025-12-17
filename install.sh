@@ -560,6 +560,12 @@ if [[ $INSTALL_SYSTEMD -eq 1 ]]; then
 
             systemctl enable entropywatcher-os-av.timer >/dev/null 2>&1 || true
             systemctl start entropywatcher-os-av.timer || warn "Failed to start entropywatcher-os-av.timer"
+
+            systemctl enable entropywatcher-nas-av-weekly.timer >/dev/null 2>&1 || true
+            systemctl start entropywatcher-nas-av-weekly.timer || warn "Failed to start entropywatcher-nas-av-weekly.timer"
+
+            systemctl enable entropywatcher-os-av-weekly.timer >/dev/null 2>&1 || true
+            systemctl start entropywatcher-os-av-weekly.timer || warn "Failed to start entropywatcher-os-av-weekly.timer"
         fi
 
         log "✓ Systemd services installed and started"
