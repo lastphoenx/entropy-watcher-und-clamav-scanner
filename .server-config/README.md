@@ -29,8 +29,8 @@ Dieses Verzeichnis enthält **anonymisierte Beispiele** der Server-Konfiguration
 
 1. **Lokal entwickeln / testen:**
    ```bash
-   cp .server-config/example/config/common.env.example config/common.env
-   cp .server-config/example/config/nas.env.example config/nas.env
+   cp .server-config/example/examples/config/common.env.example config/common.env
+   cp .server-config/example/examples/config/nas.env.example config/nas.env
    # → echte Werte eintragen
    ```
 

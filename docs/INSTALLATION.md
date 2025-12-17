@@ -147,7 +147,7 @@ sudo venv/bin/pip install -r requirements.txt
 
 ```bash
 # Copy template
-sudo cp config/common.env.example config/common.env
+sudo cp examples/config/common.env.example config/common.env
 
 # Edit with your settings
 sudo nano config/common.env
@@ -218,7 +218,7 @@ sudo systemctl start entropywatcher-os.timer
 ### Main Configuration (common.env)
 
 ```bash
-sudo nano /opt/apps/entropywatcher/main/config/common.env
+sudo nano /opt/apps/entropywatcher/config/common.env
 ```
 
 **Required settings:**
@@ -250,7 +250,7 @@ ALERT_ENTROPY_JUMP=0.2
 **NAS Scans:**
 
 ```bash
-sudo nano /opt/apps/entropywatcher/main/config/nas.env
+sudo nano /opt/apps/entropywatcher/config/nas.env
 ```
 
 ```bash
@@ -261,7 +261,7 @@ SCAN_EXCLUDES="/srv/nas/.snapshots,/srv/nas/.Recycle.Bin"
 **OS Scans:**
 
 ```bash
-sudo nano /opt/apps/entropywatcher/main/config/os.env
+sudo nano /opt/apps/entropywatcher/config/os.env
 ```
 
 ```bash
@@ -350,7 +350,7 @@ Find and modify the `HONEYFILE_TEMPLATES` array, then run the setup.
 After setup, copy the output patterns into config:
 
 ```bash
-sudo nano /opt/apps/entropywatcher/main/config/common.env
+sudo nano /opt/apps/entropywatcher/config/common.env
 ```
 
 ```bash
