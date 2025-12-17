@@ -434,7 +434,7 @@ fi
 
 # Replace placeholders with actual values from interactive input
 sed -i "s|<DB_HOST>|${DB_HOST}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|<DB_USER>|${DB_USER}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<DB_USER>|'${DB_USER}'|g" "$INSTALL_DIR/config/common.env"
 sed -i "s|<DB_PASSWORD>|'${DB_PASSWORD}'|g" "$INSTALL_DIR/config/common.env"
 sed -i "s|<YOUR_EMAIL>|${ADMIN_EMAIL}|g" "$INSTALL_DIR/config/common.env"
 sed -i "s|<MAIL_PASSWORD>|'${SMTP_PASSWORD}'|g" "$INSTALL_DIR/config/common.env"
