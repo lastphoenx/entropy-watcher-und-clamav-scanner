@@ -219,7 +219,6 @@ check_services() {
       has_red=1
       alerts+=("$service: Noch kein Scan in DB")
     else
-      age_min=${age_min//NULL/0}
       age_min=${age_min:-0}
       three_quarter_window=$((window_min * 3 / 4))
       buffer=$((100 - (age_min * 100 / window_min)))
