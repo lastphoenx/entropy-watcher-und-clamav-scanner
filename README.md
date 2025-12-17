@@ -148,8 +148,8 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-cp config/common.env.example config/common.env
-cp config/nas.env.example config/nas.env
+cp examples/config/common.env.example config/common.env
+cp examples/config/nas.env.example config/nas.env
 # Edit .env files with database credentials and paths
 ```
 

@@ -8,6 +8,7 @@ dist/
 
 # --- Umgebungen & Secrets (NIEMALS committen) ---
 # Alle echten .env-Dateien ignorieren:
+config/
 config/*.env
 *.env
 **/*.env
@@ -22,7 +23,7 @@ token.env
 *_token*
 .env.local
 # ABER: .env.example Dateien PUSHEN (anonymisierte Beispieldateien)
-!config/*.env.example
+!main/examples/config/*.env.example
 
 # ABER: .server-config/example/ Dateien PUSHEN (anonymisierte Templates)
 !*.timer.example
@@ -33,7 +34,7 @@ state/
 **/state/
 *.pid
 *.log
-*.log.*🔧 TODO auf dem Server:
+*.log.*
 
 *.sqlite
 *.sqlite3

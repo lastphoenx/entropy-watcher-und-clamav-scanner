@@ -411,11 +411,11 @@ log "STEP 4: Setting up common.env..."
 mkdir -p "$INSTALL_DIR/config"
 
 # Copy template from repo
-if [[ -f "$INSTALL_DIR/main/config/common.env.example" ]]; then
-    cp "$INSTALL_DIR/main/config/common.env.example" "$INSTALL_DIR/config/common.env"
+if [[ -f "$INSTALL_DIR/main/examples/config/common.env.example" ]]; then
+    cp "$INSTALL_DIR/main/examples/config/common.env.example" "$INSTALL_DIR/config/common.env"
     log "✓ Copied template from repo"
 else
-    error "Template not found: $INSTALL_DIR/main/config/common.env.example"
+    error "Template not found: $INSTALL_DIR/main/examples/config/common.env.example"
     exit 1
 fi
 
@@ -445,8 +445,8 @@ log "✓ common.env configured (chmod 600)"
 
 # Copy other .env.example files from repo to config/ (SKIP common.env.example!)
 log "Processing .env.example templates from repo..."
-if [[ -d "$INSTALL_DIR/main/config" ]]; then
-    for example_file in "$INSTALL_DIR/main/config"/*.env.example; do
+if [[ -d "$INSTALL_DIR/main/examples/config" ]]; then
+    for example_file in "$INSTALL_DIR/main/examples/config"/*.env.example; do
         if [[ -f "$example_file" ]]; then
             filename=$(basename "$example_file")
             # Skip common.env.example - already generated with real values above
