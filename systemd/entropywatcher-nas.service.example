@@ -9,8 +9,8 @@ RequiresMountsFor=/srv/nas
 SyslogIdentifier=ew-nas-scan
 
 Type=oneshot
-User=<USER>
-Group=<GROUP>
+User=root
+Group=root
 WorkingDirectory=/opt/apps/entropywatcher
 EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
 EnvironmentFile=-/opt/apps/entropywatcher/config/nas.env

@@ -10,14 +10,14 @@ SyslogIdentifier=ew-os-scan
 
 
 Type=oneshot
-User=<USER>
-Group=<GROUP>
+User=root
+Group=root
 WorkingDirectory=/opt/apps/entropywatcher
 Environment=PYTHONNOUSERSITE=1
 
 # lade deine Projekt-.env zusätzlich zur python-dotenv (praktisch für Mail/Timerläufe)
-EnvironmentFile=/opt/apps/entropywatcher/config/common.env
-EnvironmentFile=/opt/apps/entropywatcher/config/os.env
+EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=-/opt/apps/entropywatcher/config/os.env
 
 # Logging-Datei (Ordner muss existieren & dem user gehören):
 #Environment=LOG_LEVEL=INFO
@@ -36,5 +36,5 @@ IOSchedulingPriority=6
 # Entropity OS (Betriebssystem) scannen:
 ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py scan --paths ${SCAN_PATHS}
 
-# Zeitlimit falls OS-Pfade mal „zäh“ sind
+# Zeitlimit falls OS-Pfade mal „zäh" sind
 TimeoutStartSec=1h
