@@ -8,8 +8,8 @@ RequiresMountsFor=/srv/nas
 SyslogIdentifier=ew-nas-av-hot
 
 Type=oneshot
-User=<USER>
-Group=<GROUP>
+User=root
+Group=root
 WorkingDirectory=/opt/apps/entropywatcher
 Environment=PYTHONNOUSERSITE=1
 EnvironmentFile=-/opt/apps/entropywatcher/config/common.env

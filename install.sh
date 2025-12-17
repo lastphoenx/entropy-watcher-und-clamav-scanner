@@ -351,6 +351,26 @@ if [[ $INSTALL_CLAMAV -eq 1 ]]; then
 fi
 
 # ============================================================================
+# STEP 1b: Clone Safe-CLI-Helpers (idempotent)
+# ============================================================================
+log "STEP 1b: Setting up Safe-CLI-Helpers..."
+
+HELPERS_DIR="/opt/apps/safe-cli-helpers"
+if [[ -d "$HELPERS_DIR" ]]; then
+    log "✓ Safe-CLI-Helpers already present at $HELPERS_DIR"
+else
+    log "Cloning Safe-CLI-Helpers repository..."
+    mkdir -p /opt/apps
+    if git clone https://github.com/lastphoenx/Safe-CLI-Helpers.git "$HELPERS_DIR" 2>/dev/null; then
+        log "✓ Safe-CLI-Helpers cloned"
+    else
+        warn "Could not clone from GitHub, trying with fallback..."
+        error "Safe-CLI-Helpers clone failed"
+        exit 1
+    fi
+fi
+
+# ============================================================================
 # STEP 2: MariaDB Setup
 # ============================================================================
 if [[ $INIT_DATABASE -eq 1 ]]; then
@@ -391,14 +411,7 @@ fi
 # ============================================================================
 log "STEP 3: Setting up Python virtual environment..."
 
-# P2 Fix: Use cd_safe helper
-cd_safe "$INSTALL_DIR/main"
-
-python3 -m venv venv
-
-# P3 Fix: Direct Python calls instead of source (non-interactive safe)
-./venv/bin/pip install --quiet --upgrade pip
-./venv/bin/pip install --quiet -r requirements.txt
+bash "$HELPERS_DIR/tools/venv_rotate.sh" --keep 3 "$INSTALL_DIR"
 
 log "✓ Python environment ready"
 
@@ -422,9 +435,9 @@ fi
 # Replace placeholders with actual values from interactive input
 sed -i "s|<DB_HOST>|${DB_HOST}|g" "$INSTALL_DIR/config/common.env"
 sed -i "s|<DB_USER>|${DB_USER}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|<DB_PASSWORD>|${DB_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<DB_PASSWORD>|'${DB_PASSWORD}'|g" "$INSTALL_DIR/config/common.env"
 sed -i "s|<YOUR_EMAIL>|${ADMIN_EMAIL}|g" "$INSTALL_DIR/config/common.env"
-sed -i "s|<MAIL_PASSWORD>|${SMTP_PASSWORD}|g" "$INSTALL_DIR/config/common.env"
+sed -i "s|<MAIL_PASSWORD>|'${SMTP_PASSWORD}'|g" "$INSTALL_DIR/config/common.env"
 
 # Update SMTP settings if provided
 if [[ -n "$SMTP_HOST" ]]; then
