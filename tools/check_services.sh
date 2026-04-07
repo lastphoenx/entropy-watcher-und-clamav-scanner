@@ -13,22 +13,22 @@ NC='\033[0m' # No Color
 
 # Services to check
 SERVICES=(
-    "ew-nas.service"
-    "ew-nas-av.service"
-    "ew-nas-av-weekly.service"
-    "ew-os.service"
-    "ew-os-av.service"
-    "ew-os-av-weekly.service"
+    "entropywatcher-nas.service"
+    "entropywatcher-nas-av.service"
+    "entropywatcher-nas-av-weekly.service"
+    "entropywatcher-os.service"
+    "entropywatcher-os-av.service"
+    "entropywatcher-os-av-weekly.service"
     "honeyfile-monitor.service"
 )
 
 TIMERS=(
-    "ew-nas.timer"
-    "ew-nas-av.timer"
-    "ew-nas-av-weekly.timer"
-    "ew-os.timer"
-    "ew-os-av.timer"
-    "ew-os-av-weekly.timer"
+    "entropywatcher-nas.timer"
+    "entropywatcher-nas-av.timer"
+    "entropywatcher-nas-av-weekly.timer"
+    "entropywatcher-os.timer"
+    "entropywatcher-os-av.timer"
+    "entropywatcher-os-av-weekly.timer"
     "honeyfile-monitor.timer"
 )
 
@@ -97,14 +97,14 @@ echo -e "${BLUE}🚨 Recent Failures (last 24h):${NC}"
 echo ""
 
 # Check for recent failures in journal
-failures=$(journalctl --since "24 hours ago" -u "ew-*.service" -u "honeyfile-monitor.service" -p err -o cat --no-pager 2>/dev/null | wc -l)
+failures=$(journalctl --since "24 hours ago" -u "entropywatcher-*.service" -u "honeyfile-monitor.service" -p err -o cat --no-pager 2>/dev/null | wc -l)
 
 if [[ $failures -eq 0 ]]; then
     echo -e "  ${GREEN}✓${NC} No errors in the last 24 hours"
 else
     echo -e "  ${YELLOW}⚠${NC}  Found $failures error entries:"
     echo ""
-    journalctl --since "24 hours ago" -u "ew-*.service" -u "honeyfile-monitor.service" -p err --no-pager | tail -20
+    journalctl --since "24 hours ago" -u "entropywatcher-*.service" -u "honeyfile-monitor.service" -p err --no-pager | tail -20
 fi
 
 echo ""
