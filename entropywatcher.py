@@ -1574,6 +1574,7 @@ def init_scan(ctx, paths, force):
         if path_key not in seen:
             mark_missing(cur, path_key)
 
+    conn.commit()
     cur.close(); conn.close()
 
     # Timing-Log
