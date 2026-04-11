@@ -228,6 +228,22 @@ print_row_full() {
   fi
   
   printf "%-35.35s | %-7.7s | %-7.7s | %-38.38s | %-38.38s\n" \
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+}
+
+print_row_box() {
+  local unit="$1"
+  declare -A info
+  parse_timer_info "$unit" info
+  
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+}
+
+print_row_box() {
+  local unit="$1"
+  declare -A info
+  parse_timer_info "$unit" info
+  
   printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-12.12s │ %-12.12s │\n" \
     "${unit}.timer" "${info[enabled]}" "${info[active]}" "${info[last_delta]}" "${info[next_delta]}"
 }
