@@ -114,22 +114,34 @@ parse_timer_info() {
   result[next_dt]="$(echo "$dates" | head -1)"
   result[last_dt]="$(echo "$dates" | tail -1)"
   
-  # Parse relative times (zeitzone-agnostisch)
+  # Parse relative times - EXAKT wie im Original, nur timezone-agnostisch
   local next_rel_raw last_rel_raw
-  next_rel_raw="$(echo "$timer_line" | sed -E 's/^.*[0-9]{2}:[0-9]{2}:[0-9]{2} [A-Z]+ ([^ ].*left).*/\1/')"
-  last_rel_raw="$(echo "$timer_line" | sed -E 's/^.*[0-9]{2}:[0-9]{2}:[0-9]{2} [A-Z]+ ([^ ].*ago) .*/\1/')"
+  next_rel_raw="$(echo "$timer_line" | sed -E 's/^.* [A-Z]+ ([^ ].* left).*/\1/')"
+  last_rel_raw="$(echo "$timer_line" | sed -E 's/^.* [A-Z]+ ([^ ].* ago) .*/\1/')"
   
-  # Validierung: Falls sed die ganze Zeile zurückgibt, ist Pattern fehlgeschlagen
-  if [[ "$next_rel_raw" == *"$timer_line"* ]] || [[ -z "$next_rel_raw" ]]; then
-    result[next_rel]="n/a"
-  else
-    result[next_rel]="$(shorten_rel "$next_rel_raw")"
+  # Shorten (wie im Original)
+  next_rel_raw="$(shorten_rel "$next_rel_raw")"
+  last_rel_raw="$(shorten_rel "$last_rel_raw")"
+  
+  # Nochmal shorten (wie im Original, Zeilen 77-82)
+  if [[ -n "$next_rel_raw" ]]; then
+    next_rel_raw="$(shorten_rel "$next_rel_raw")"
+  fi
+  if [[ -n "$last_rel_raw" ]]; then
+    last_rel_raw="$(shorten_rel "$last_rel_raw")"
   fi
   
-  if [[ "$last_rel_raw" == *"$timer_line"* ]] || [[ -z "$last_rel_raw" ]]; then
+  # Validierung (wie im Original, Zeilen 89-90)
+  if [[ -z "$next_rel_raw" ]]; then
+    result[next_rel]="n/a"
+  else
+    result[next_rel]="$next_rel_raw"
+  fi
+  
+  if [[ -z "$last_rel_raw" ]]; then
     result[last_rel]="n/a"
   else
-    result[last_rel]="$(shorten_rel "$last_rel_raw")"
+    result[last_rel]="$last_rel_raw"
   fi
   
   # Epoch timestamps für Sortierung
