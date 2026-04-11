@@ -87,7 +87,66 @@ shorten_rel() {
       -e 's/[[:space:]]+/ /g' \
       | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
 }
-_compact() {
+
+parse_timer_info() {
+  local unit="$1"
+  local -n result=$2
+  
+  result[enabled]="$(systemctl is-enabled "${unit}.timer" 2>/dev/null || echo "-")"
+  result[active]="$(systemctl is-active "${unit}.timer" 2>/dev/null || echo "-")"
+  
+  local timer_line
+  timer_line="$(systemctl list-timers "${unit}.timer" 2>/dev/null | sed -n '2p')"
+  
+  if [[ -z "$timer_line" ]]; then
+    result[next_dt]="n/a"
+    result[last_dt]="n/a"
+    result[next_rel]="n/a"
+    result[last_rel]="n/a"
+    result[next_epoch]=0
+    result[last_epoch]=0
+    return
+  fi
+  
+  # Parse datetime (robust gegen verschiedene Zeitzonen)
+  local dates
+  dates="$(echo "$timer_line" | grep -oE '[A-Za-z]+ [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}')"
+  result[next_dt]="$(echo "$dates" | head -1)"
+  result[last_dt]="$(echo "$dates" | tail -1)"
+  
+  # Parse relative times (zeitzone-agnostisch)
+  local next_rel_raw last_rel_raw
+  next_rel_raw="$(echo "$timer_line" | sed -E 's/^.*[0-9]{2}:[0-9]{2}:[0-9]{2} [A-Z]+ ([^ ].*left).*/\1/')"
+  last_rel_raw="$(echo "$timer_line" | sed -E 's/^.*[0-9]{2}:[0-9]{2}:[0-9]{2} [A-Z]+ ([^ ].*ago) .*/\1/')"
+  
+  # Validierung: Falls sed die ganze Zeile zurückgibt, ist Pattern fehlgeschlagen
+  if [[ "$next_rel_raw" == *"$timer_line"* ]] || [[ -z "$next_rel_raw" ]]; then
+    result[next_rel]="n/a"
+  else
+    result[next_rel]="$(shorten_rel "$next_rel_raw")"
+  fi
+  
+  if [[ "$last_rel_raw" == *"$timer_line"* ]] || [[ -z "$last_rel_raw" ]]; then
+    result[last_rel]="n/a"
+  else
+    result[last_rel]="$(shorten_rel "$last_rel_raw")"
+  fi
+  
+  # Epoch timestamps für Sortierung
+  if [[ "${result[next_dt]}" != "n/a" ]]; then
+    result[next_epoch]=$(date -d "${result[next_dt]}" +%s 2>/dev/null || echo 0)
+  else
+    result[next_epoch]=0
+  fi
+  
+  if [[ "${result[last_dt]}" != "n/a" ]]; then
+    result[last_epoch]=$(date -d "${result[last_dt]}" +%s 2>/dev/null || echo 0)
+  else
+    result[last_epoch]=0
+  fi
+}
+
+header_compact() {
   printf "%-35.35s | %-7.7s | %-7.7s | %-12.12s | %-12.12s\n" "Unit" "Enabled" "Active" "Last" "Next"
   printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-12.12s-+-%-12.12s\n" \
     "-----------------------------------" "-------" "-------" "------------" "------------"
@@ -100,7 +159,23 @@ header_hybrid() {
 }
 
 header_full() {
-  printf _compact() {
+  printf "%-35.35s | %-7.7s | %-7.7s | %-30.30s | %-30.30s\n" "Unit" "Enabled" "Active" "LastRun" "NextRun"
+  printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-30.30s-+-%-30.30s\n" \
+    "-----------------------------------" "-------" "-------" "------------------------------" "------------------------------"
+}
+
+header_box() {
+  echo "┌─────────────────────────────────────┬─────────┬─────────┬──────────────┬──────────────┐"
+  printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-12.12s │ %-12.12s │\n" \
+    "Unit" "Enabled" "Active" "Last" "Next"
+  echo "├─────────────────────────────────────┼─────────┼─────────┼──────────────┼──────────────┤"
+}
+
+footer_box() {
+  echo "└─────────────────────────────────────┴─────────┴─────────┴──────────────┴──────────────┘"
+}
+
+print_row_compact() {
   local unit="$1"
   declare -A info
   parse_timer_info "$unit" info
@@ -151,6 +226,30 @@ print_row_full() {
   
   if [[ "${info[next_dt]}" != "n/a" ]]; then
     local next_short="$(echo "${info[next_dt]}" | awk '{print $2, $3}')"
+    next_display="$next_short (${info[next_rel]})"
+  else
+    next_display="n/a"
+  fi
+  
+  printf "%-35.35s | %-7.7s | %-7.7s | %-30.30s | %-30.30s\n" \
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+}
+
+print_row_box() {
+  local unit="$1"
+  declare -A info
+  parse_timer_info "$unit" info
+  
+  local last_display="${info[last_rel]}"
+  [[ "${info[last_rel]}" != "n/a" ]] && last_display="${info[last_rel]} ago"
+  
+  local next_display="${info[next_rel]}"
+  [[ "${info[next_rel]}" != "n/a" ]] && next_display="${info[next_rel]} left"
+  
+  printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-12.12s │ %-12.12s │\n" \
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+}
+
 # Main execution
 echo "EntropyWatcher / Backup-Pipeline Timer-Status"
 echo ""
@@ -210,103 +309,4 @@ case "$FORMAT" in
 esac
 
 # Cleanup
-rm -f "$TMPFILE"${info[last_rel]}" != "n/a" ]] && last_display="${info[last_rel]} ago"
-  
-  local next_display="${info[next_rel]}"
-  [[ "${info[next_rel]}" != "n/a" ]] && next_display="${info[next_rel]} left"
-  
-  printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-12.12s │ %-12.12s │\n" \
-    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"Epoch timestamps für Sortierung
-  if [[ "${result[next_dt]}" != "n/a" ]]; then
-    result[next_epoch]=$(date -d "${result[next_dt]}" +%s 2>/dev/null || echo 0)
-  else
-    result[next_epoch]=0
-  fi
-  
-  if [[ "${result[last_dt]}" != "n/a" ]]; then
-    result[last_epoch]=$(date -d "${result[last_dt]}" +%s 2>/dev/null || echo 0)
-  else
-    result[last_epoch]=0
-  fi
-}
-
-header() {
-  if [[ "$STYLE" == "box" ]]; then
-    echo "┌─────────────────────────────────────┬─────────┬─────────┬────────────────────────────────────────────┬────────────────────────────────────────────┐"
-    printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-44.44s │ %-44.44s │\n" \
-      "Unit" "Enabled" "Active" "LastRun" "NextRun"
-    echo "├─────────────────────────────────────┼─────────┼─────────┼────────────────────────────────────────────┼────────────────────────────────────────────┤"
-  else
-    printf "%-35.35s | %-7.7s | %-7.7s | %-44.44s | %-44.44s\n" "Unit" "Enabled" "Active" "LastRun" "NextRun"
-    printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-44.44s-+-%-44.44s\n" \
-      "-----------------------------------" "-------" "-------" "--------------------------------------------" "--------------------------------------------"
-  fi
-}
-
-print_row() {
-  local unit="$1"
-  local enabled active last next
-
-  enabled="$(systemctl is-enabled "${unit}.timer" 2>/dev/null || echo "-")"
-  active="$(systemctl is-active "${unit}.timer" 2>/dev/null || echo "-")"
-
-  # systemctl list-timers Zeile 2 parsen - ROBUST nach Datumsformat!
-  # Format: Sun 2025-12-07 11:20:22 CET 14h left Sun 2025-12-07 12:24:25 CET 22min ago entropywatcher-nas.timer
-  local timer_line
-  timer_line="$(systemctl list-timers "${unit}.timer" 2>/dev/null | sed -n '2p')"
-  
-  if [[ -z "$timer_line" ]]; then
-    next="n/a"
-    last="n/a"
-  else
-    local dates next_datetime last_datetime next_rel last_rel
-    
-    dates="$(echo "$timer_line" | grep -oE '[A-Za-z]+ [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}')"
-    next_datetime="$(echo "$dates" | head -1)"
-    last_datetime="$(echo "$dates" | tail -1)"
-    
-    next_rel="$(echo "$timer_line" | sed -E 's/^.* CET ([^ ].* left).*/\1/')"
-    last_rel="$(echo "$timer_line" | sed -E 's/^.* CET ([^ ].* ago) .*/\1/')"
-
-    next_rel="$(shorten_rel "$next_rel")"
-    last_rel="$(shorten_rel "$last_rel")"
-    
-    if [[ -n "$next_rel" ]]; then
-      next_rel="$(shorten_rel "$next_rel")"
-    fi
-    if [[ -n "$last_rel" ]]; then
-      last_rel="$(shorten_rel "$last_rel")"
-    fi
-    
-    next="${next_datetime} (${next_rel})"
-    last="${last_datetime} (${last_rel})"
-    
-    if [[ -z "$next_rel" ]]; then next="n/a"; fi
-    if [[ -z "$last_rel" ]]; then last="n/a"; fi
-  fi
-
-  if [[ "$STYLE" == "box" ]]; then
-    printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-44.44s │ %-44.44s │\n" \
-      "${unit}.timer" "$enabled" "$active" "$last" "$next"
-  else
-    printf "%-35.35s | %-7.7s | %-7.7s | %-44.44s | %-44.44s\n" \
-      "${unit}.timer" "$enabled" "$active" "$last" "$next"
-  fi
-}
-
-footer() {
-  if [[ "$STYLE" == "box" ]]; then
-    echo "└─────────────────────────────────────┴─────────┴─────────┴────────────────────────────────────────────┴────────────────────────────────────────────┘"
-  else
-    printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-44.44s-+-%-44.44s\n" \
-      "-----------------------------------" "-------" "-------" "--------------------------------------------" "--------------------------------------------"
-  fi
-}
-
-echo "EntropyWatcher / Backup-Pipeline Timer-Status"
-echo
-header
-for u in "${SERVICES[@]}"; do
-  print_row "$u"
-done
-footer
+rm -f "$TMPFILE"
