@@ -12,6 +12,10 @@ ExecStart=/opt/apps/rtb/rtb_wrapper.sh
 StandardOutput=append:/var/log/backup/rtb_wrapper.log
 StandardError=append:/var/log/backup/rtb_wrapper.log
 
+# Exit-Code 1 = Safety-Gate YELLOW (normaler Skip, kein Fehler)
+# Exit-Code 2 = Safety-Gate RED (echter Alarm → bleibt als Failed sichtbar)
+SuccessExitStatus=1
+
 # Resource limits (schonend für System)
 Nice=10
 IOSchedulingClass=idle
