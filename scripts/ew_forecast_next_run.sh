@@ -73,19 +73,20 @@ SERVICES=(
 # Temporary file for sorting
 TMPFILE=$(mktemp)
 
-shorten_rel() {
-  local rel="$1"
-  echo "$rel" \
-    | sed -E \
-      -e 's/([0-9]+)[[:space:]]*days?/\1d/g' \
-      -e 's/([0-9]+)[[:space:]]*day/\1d/g' \
-      -e 's/([0-9]+)[[:space:]]*hours?/\1h/g' \
-      -e 's/([0-9]+)[[:space:]]*hour/\1h/g' \
-      -e 's/([0-9]+)[[:space:]]*mins?/\1m/g' \
-      -e 's/[[:space:]]+ago//g' \
-      -e 's/[[:space:]]+left//g' \
-      -e 's/[[:space:]]+/ /g' \
-      | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+# Format delta in seconds as XXd XXh XXm (always 2-digit)
+format_delta() {
+  local seconds="$1"
+  
+  if [[ "$seconds" -eq 0 ]]; then
+    echo "n/a"
+    return
+  fi
+  
+  local days=$((seconds / 86400))
+  local hours=$(((seconds % 86400) / 3600))
+  local mins=$(((seconds % 3600) / 60))
+  
+  printf "%02dd %02dh %02dm" "$days" "$hours" "$mins"
 }
 
 parse_timer_info() {
@@ -101,8 +102,8 @@ parse_timer_info() {
   if [[ -z "$timer_line" ]]; then
     result[next_dt]="n/a"
     result[last_dt]="n/a"
-    result[next_rel]="n/a"
-    result[last_rel]="n/a"
+    result[next_delta]="n/a"
+    result[last_delta]="n/a"
     result[next_epoch]=0
     result[last_epoch]=0
     return
@@ -114,37 +115,10 @@ parse_timer_info() {
   result[next_dt]="$(echo "$dates" | head -1)"
   result[last_dt]="$(echo "$dates" | tail -1)"
   
-  # Parse relative times - EXAKT wie im Original, nur timezone-agnostisch
-  local next_rel_raw last_rel_raw
-  next_rel_raw="$(echo "$timer_line" | sed -E 's/^.* [A-Z]+ ([^ ].* left).*/\1/')"
-  last_rel_raw="$(echo "$timer_line" | sed -E 's/^.* [A-Z]+ ([^ ].* ago) .*/\1/')"
+  # Epoch timestamps
+  local current_epoch
+  current_epoch=$(date +%s)
   
-  # Shorten (wie im Original)
-  next_rel_raw="$(shorten_rel "$next_rel_raw")"
-  last_rel_raw="$(shorten_rel "$last_rel_raw")"
-  
-  # Nochmal shorten (wie im Original, Zeilen 77-82)
-  if [[ -n "$next_rel_raw" ]]; then
-    next_rel_raw="$(shorten_rel "$next_rel_raw")"
-  fi
-  if [[ -n "$last_rel_raw" ]]; then
-    last_rel_raw="$(shorten_rel "$last_rel_raw")"
-  fi
-  
-  # Validierung (wie im Original, Zeilen 89-90)
-  if [[ -z "$next_rel_raw" ]]; then
-    result[next_rel]="n/a"
-  else
-    result[next_rel]="$next_rel_raw"
-  fi
-  
-  if [[ -z "$last_rel_raw" ]]; then
-    result[last_rel]="n/a"
-  else
-    result[last_rel]="$last_rel_raw"
-  fi
-  
-  # Epoch timestamps für Sortierung
   if [[ "${result[next_dt]}" != "n/a" ]]; then
     result[next_epoch]=$(date -d "${result[next_dt]}" +%s 2>/dev/null || echo 0)
   else
@@ -156,6 +130,25 @@ parse_timer_info() {
   else
     result[last_epoch]=0
   fi
+  
+  # Delta calculation: format as XXd XXh XXm
+  local next_delta_sec last_delta_sec
+  
+  if [[ ${result[next_epoch]} -gt 0 ]]; then
+    next_delta_sec=$((result[next_epoch] - current_epoch))
+    [[ $next_delta_sec -lt 0 ]] && next_delta_sec=0
+    result[next_delta]="$(format_delta $next_delta_sec)"
+  else
+    result[next_delta]="n/a"
+  fi
+  
+  if [[ ${result[last_epoch]} -gt 0 ]]; then
+    last_delta_sec=$((current_epoch - result[last_epoch]))
+    [[ $last_delta_sec -lt 0 ]] && last_delta_sec=0
+    result[last_delta]="$(format_delta $last_delta_sec)"
+  else
+    result[last_delta]="n/a"
+  fi
 }
 
 header_compact() {
@@ -165,15 +158,15 @@ header_compact() {
 }
 
 header_hybrid() {
-  printf "%-35.35s | %-7.7s | %-7.7s | %-12.12s | %-30.30s\n" "Unit" "Enabled" "Active" "Last" "Next"
-  printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-12.12s-+-%-30.30s\n" \
-    "-----------------------------------" "-------" "-------" "------------" "------------------------------"
+  printf "%-35.35s | %-7.7s | %-7.7s | %-12.12s | %-38.38s\n" "Unit" "Enabled" "Active" "Last" "Next"
+  printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-12.12s-+-%-38.38s\n" \
+    "-----------------------------------" "-------" "-------" "------------" "--------------------------------------"
 }
 
 header_full() {
-  printf "%-35.35s | %-7.7s | %-7.7s | %-30.30s | %-30.30s\n" "Unit" "Enabled" "Active" "LastRun" "NextRun"
-  printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-30.30s-+-%-30.30s\n" \
-    "-----------------------------------" "-------" "-------" "------------------------------" "------------------------------"
+  printf "%-35.35s | %-7.7s | %-7.7s | %-38.38s | %-38.38s\n" "Unit" "Enabled" "Active" "LastRun" "NextRun"
+  printf "%-35.35s-+-%-7.7s-+-%-7.7s-+-%-38.38s-+-%-38.38s\n" \
+    "-----------------------------------" "-------" "-------" "--------------------------------------" "--------------------------------------"
 }
 
 header_box() {
@@ -192,14 +185,8 @@ print_row_compact() {
   declare -A info
   parse_timer_info "$unit" info
   
-  local last_display="${info[last_rel]}"
-  [[ "${info[last_rel]}" != "n/a" ]] && last_display="${info[last_rel]} ago"
-  
-  local next_display="${info[next_rel]}"
-  [[ "${info[next_rel]}" != "n/a" ]] && next_display="${info[next_rel]} left"
-  
   printf "%-35.35s | %-7.7s | %-7.7s | %-12.12s | %-12.12s\n" \
-    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "${info[last_delta]}" "${info[next_delta]}"
 }
 
 print_row_hybrid() {
@@ -207,20 +194,17 @@ print_row_hybrid() {
   declare -A info
   parse_timer_info "$unit" info
   
-  local last_display="${info[last_rel]}"
-  [[ "${info[last_rel]}" != "n/a" ]] && last_display="${info[last_rel]} ago"
-  
-  # Next: Datum + relative Zeit
+  # Next: Datum + Zeit + Delta
   local next_display
   if [[ "${info[next_dt]}" != "n/a" ]]; then
     local next_short="$(echo "${info[next_dt]}" | awk '{print $2, $3}')"  # Nur Datum + Zeit
-    next_display="$next_short (${info[next_rel]})"
+    next_display="$next_short (${info[next_delta]})"
   else
     next_display="n/a"
   fi
   
-  printf "%-35.35s | %-7.7s | %-7.7s | %-12.12s | %-30.30s\n" \
-    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+  printf "%-35.35s | %-7.7s | %-7.7s | %-12.12s | %-38.38s\n" \
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "${info[last_delta]}" "$next_display"
 }
 
 print_row_full() {
@@ -231,35 +215,21 @@ print_row_full() {
   local last_display next_display
   if [[ "${info[last_dt]}" != "n/a" ]]; then
     local last_short="$(echo "${info[last_dt]}" | awk '{print $2, $3}')"
-    last_display="$last_short (${info[last_rel]})"
+    last_display="$last_short (${info[last_delta]})"
   else
     last_display="n/a"
   fi
   
   if [[ "${info[next_dt]}" != "n/a" ]]; then
     local next_short="$(echo "${info[next_dt]}" | awk '{print $2, $3}')"
-    next_display="$next_short (${info[next_rel]})"
+    next_display="$next_short (${info[next_delta]})"
   else
     next_display="n/a"
   fi
   
-  printf "%-35.35s | %-7.7s | %-7.7s | %-30.30s | %-30.30s\n" \
-    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
-}
-
-print_row_box() {
-  local unit="$1"
-  declare -A info
-  parse_timer_info "$unit" info
-  
-  local last_display="${info[last_rel]}"
-  [[ "${info[last_rel]}" != "n/a" ]] && last_display="${info[last_rel]} ago"
-  
-  local next_display="${info[next_rel]}"
-  [[ "${info[next_rel]}" != "n/a" ]] && next_display="${info[next_rel]} left"
-  
+  printf "%-35.35s | %-7.7s | %-7.7s | %-38.38s | %-38.38s\n" \
   printf "│ %-35.35s │ %-7.7s │ %-7.7s │ %-12.12s │ %-12.12s │\n" \
-    "${unit}.timer" "${info[enabled]}" "${info[active]}" "$last_display" "$next_display"
+    "${unit}.timer" "${info[enabled]}" "${info[active]}" "${info[last_delta]}" "${info[next_delta]}"
 }
 
 # Main execution
