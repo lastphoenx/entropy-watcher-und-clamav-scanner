@@ -336,6 +336,13 @@
                         <td>🔄 Läuft</td>
                     </tr>
                     <tr>
+                        <td class="time">02:45</td>
+                        <td>pcloud_quick_delta.py</td>
+                        <td>Verify upload (missing files?)</td>
+                        <td>~2 sec</td>
+                        <td>🔍 Checking</td>
+                    </tr>
+                    <tr>
                         <td class="time">03:00</td>
                         <td>Backup-Pipeline</td>
                         <td>Fertig ✅</td>
@@ -380,6 +387,7 @@
                         Manifest["📋 Manifest-Gen<br/>(SHA256-Hash)"]
                         Dedup["🎯 Deduplication<br/>(content_index.json)"]
                         Push["⬆️ Smart-Upload<br/>(nur NEW)"]
+                        Verify["🔍 Verification<br/>(pcloud_quick_delta)"]
                     end
 
                     subgraph Storage["☁️ pCloud Storage"]
@@ -401,7 +409,8 @@
                     Gate -->|RED| DB
                     Manifest --> Dedup
                     Dedup --> Push
-                    Push --> pCloud
+                    Push --> Verify
+                    Verify --> pCloud
                     Push --> Index
                     pCloud --> Index
                     Gate --> DB
@@ -411,6 +420,7 @@
                     style NAS fill:#2a3f5f
                     style OS fill:#2a3f5f
                     style Gate fill:#d32f2f,stroke:#ff5252,color:#fff
+                    style Verify fill:#8b5cf6,stroke:#a78bfa,color:#fff
                     style pCloud fill:#1976d2,stroke:#42a5f5,color:#fff
                     style DB fill:#7b1fa2,stroke:#ab47bc,color:#fff
             </div>
