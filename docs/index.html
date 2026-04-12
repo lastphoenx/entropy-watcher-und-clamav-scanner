@@ -1061,7 +1061,27 @@
             
             <!-- Step 6 -->
             <div style="display: flex; gap: 1rem; align-items: flex-start;">
-              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">6</div>
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #7c3aed); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">6</div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem; color: #8b5cf6; font-size: 1rem;">🔍 POST-UPLOAD VERIFICATION</h4>
+                <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+                  → pcloud_quick_delta.py<br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Compare live state vs. content_index.json</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Detect missing files (interrupted upload?)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">├─ Detect unauthorized changes (tamper?)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 1rem;">└─ Report: JSON + console output</span><br>
+                  <br>
+                  <span style="color: #8b5cf6; margin-left: 1rem; font-weight: 600;">⚠️ If missing files detected:</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">1. pcloud_repair_index.py (remove invalid holders)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">2. pcloud_push_... (re-upload missing files only)</span><br>
+                  <span style="color: var(--text-dim); margin-left: 2rem;">3. pcloud_quick_delta.py (verify 0 missing)</span>
+                </code>
+              </div>
+            </div>
+            
+            <!-- Step 7 -->
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="min-width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;">7</div>
               <div style="flex: 1;">
                 <h4 style="margin: 0 0 0.5rem; color: #3b82f6; font-size: 1rem;">☁️ pCLOUD STORAGE</h4>
                 <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">

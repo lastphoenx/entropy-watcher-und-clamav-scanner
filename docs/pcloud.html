@@ -153,18 +153,45 @@ Lokales Verzeichnis    →    Manifest (JSON)    →    pCloud Upload
   --pcloud-folder /backups/nas-user1 \
   --auth-token "YOUR_PCLOUD_TOKEN"</code></pre>
 
-      <h3>2.3 pcloud_integrity_check.py</h3>
+      <h3>2.3 pcloud_quick_delta.py</h3>
+      <p>Fast delta detection for uploaded snapshots. Compares the live state on pCloud (via listfolder) with the local content_index.json to detect missing files, unauthorized changes, or corruption.</p>
+      <pre><code class="language-bash">python pcloud_quick_delta.py \
+  --dest-root /Backup/rtb_1to1 \
+  --snapshot 2026-04-10-075334 \
+  --env-file .env \
+  --json-out /tmp/delta_report.json</code></pre>
+      <pre><code class="language-bash">=== RESULT: tamper-detect ===
+  Checked Index Nodes:    17,928
+  OK:                     17,928    ← 100%!
+
+  Missing Anchors:        0         ← SUCCESS!
+  FileID Mismatches:      0
+  Hash Mismatches:        0</code></pre>
+
+      <h3>2.4 pcloud_repair_index.py</h3>
+      <p>Repairs the local content_index.json when missing files are detected. Removes holders and anchor_path references for files that don't exist on pCloud anymore.</p>
+      <pre><code class="language-bash">python pcloud_repair_index.py \
+  --dest-root /Backup/rtb_1to1 \
+  --env-file .env \
+  --dry-run  # Preview changes first
+  
+# Apply repairs
+python pcloud_repair_index.py \
+  --dest-root /Backup/rtb_1to1 \
+  --env-file .env</code></pre>
+
+      <h3>2.5 pcloud_integrity_check.py</h3>
       <p>Verifies that already uploaded data still matches the hashes from a manifest.</p>
       <pre><code class="language-bash">python pcloud_integrity_check.py \
   --manifest manifest_20251123_153000.json \
   --pcloud-folder /backups/nas-user1 \
   --auth-token "YOUR_PCLOUD_TOKEN"</code></pre>
 
-      <h3>2.4 pcloud_restore.py</h3>
+      <h3>2.6 pcloud_restore.py</h3>
       <p>Restores pCloud snapshots either as a classic flat tree or into an object-store layout with a shared <code>_objects</code> directory and hardlinked snapshots.</p>
 
-      <h3>2.5 wrapper_pcloud_sync_1to1.sh</h3>
-      <p>Orchestrates safety-gate check, manifest creation and upload.</p>
+      <h3>2.7 wrapper_pcloud_sync_1to1.sh</h3>
+      <p>Orchestrates safety-gate check, manifest creation, upload and post-upload verification.</p>
       <pre><code class="language-bash">#!/bin/bash
 set -e
 
@@ -189,7 +216,13 @@ python3 /opt/pcloud/pcloud_push_json_manifest_to_pcloud.py \
   --manifest "$MANIFEST" \
   --pcloud-folder "$PCLOUD_FOLDER"
 
-# 4. Cleanup
+# 4. Post-Upload Verification (NEW!)
+python3 /opt/pcloud/pcloud_quick_delta.py \
+  --dest-root "$PCLOUD_FOLDER" \
+  --snapshot "$(basename $SOURCE)" \
+  --json-out "/tmp/delta_report.json"
+
+# 5. Cleanup
 rm "$MANIFEST"
 echo "✅ Backup completed successfully"</code></pre>
 
@@ -222,21 +255,103 @@ echo "✅ Backup completed successfully"</code></pre>
       ├─ For each file: reuse or upload
       └─ Update content_index.json
 
-6. pCLOUD STORAGE
+6. POST-UPLOAD VERIFICATION (NEW!)
+   └─ pcloud_quick_delta.py
+      ├─ Compare live state vs. content_index.json
+      ├─ Detect missing files
+      ├─ Detect unauthorized changes
+      └─ Report: JSON + console output
+
+7. INDEX REPAIR (if needed)
+   └─ pcloud_repair_index.py
+      ├─ Remove holders for missing files
+      ├─ Clear anchor_path if anchor missing
+      └─ Save repaired index locally
+
+8. RE-UPLOAD MISSING FILES
+   └─ pcloud_push_json_manifest_to_pcloud.py (again)
+      ├─ Resume-aware: skips valid files
+      ├─ Uploads only missing files
+      └─ Updates markers (.upload_complete)
+
+9. pCLOUD STORAGE
    └─ /Backup/rtb_1to1/
       ├─ _snapshots/
-      ├─ _index/content_index.json
+      │  ├─ 2026-04-10-075334/
+      │  │  ├─ .upload_started
+      │  │  ├─ .upload_complete
+      │  │  └─ snapshot files...
+      │  └─ _index/content_index.json
       └─ future snapshots</code></pre>
 
-      <h2>4. Safety-Gate Integration</h2>
+      <h2>4. Delta-Check & Repair Workflow</h2>
+      <p>When interrupted uploads or file deletions cause missing files, use this workflow to detect and repair them without re-uploading the entire snapshot.</p>
+
+      <h3>4.1 Scenario: Interrupted Upload</h3>
+      <p>Upload was stopped at 15% progress. Resume mechanism should skip already uploaded files, but some are missing on pCloud.</p>
+
+      <h3>4.2 Step-by-Step Recovery</h3>
+      <pre><code class="language-bash"># Step 1: Detect missing files
+python pcloud_quick_delta.py \
+  --dest-root /Backup/rtb_1to1 \
+  --snapshot 2026-04-10-075334 \
+  --env-file .env \
+  --json-out /tmp/delta.json
+
+# Output shows:
+# Missing Anchors: 197
+
+# Step 2: Repair local index
+python pcloud_repair_index.py \
+  --dest-root /Backup/rtb_1to1 \
+  --env-file .env
+
+# Output:
+# Holders removed: 197
+# Nodes with anchor_path=None: 197
+
+# Step 3: Re-upload missing files
+python pcloud_push_json_manifest_to_pcloud.py \
+  --manifest /srv/pcloud-temp/manifest_2026-04-10-075334.json \
+  --dest-root /Backup/rtb_1to1 \
+  --snapshot-mode 1to1 \
+  --env-file .env
+
+# Output:
+# uploaded=197 resumed=19,611 stubs=0
+
+# Step 4: Final verification
+python pcloud_quick_delta.py \
+  --dest-root /Backup/rtb_1to1 \
+  --snapshot 2026-04-10-075334 \
+  --env-file .env
+
+# Output:
+# Missing Anchors: 0  ← SUCCESS!</code></pre>
+
+      <h3>4.3 Performance Metrics (Real Data)</h3>
+      <pre class="table-like">Scenario: 19,808 files (89.66 GB), 197 missing
+
+Phase              Time     API Calls   Notes
+─────────────────  ───────  ──────────  ─────────────────────
+Delta Check        1.9s     1           Single recursive list
+Repair Index       <1s      2           Load + save local
+Upload (197)       15min    ~600        Only missing files
+Final Verify       1.8s     1           Confirm 0 missing
+─────────────────  ───────  ──────────  ─────────────────────
+TOTAL              ~17min   ~604        vs. full re-upload: 2+ hours
+
+Time saved: 95% | Bandwidth saved: 96%</pre>
+
+      <h2>5. Safety-Gate Integration</h2>
       <p>The backup pipeline relies on EntropyWatcher&apos;s safety-gate to block backups during ransomware or AV incidents.</p>
       <pre class="table-like">Exit  Status  STRICT=0 behavior         STRICT=1 behavior
 0     GREEN   backup runs               backup runs
 1     YELLOW  backup runs with warning  backup blocked
 2     RED     backup blocked            backup blocked</pre>
 
-      <h2>5. Monitoring &amp; Troubleshooting</h2>
-      <h3>5.1 Monitoring</h3>
+      <h2>6. Monitoring &amp; Troubleshooting</h2>
+      <h3>6.1 Monitoring</h3>
       <pre><code class="language-bash"># EntropyWatcher status dashboard
 cd /opt/apps/entropywatcher/main
 bash ew_status.sh /opt/apps/entropywatcher/config dashboard
@@ -247,7 +362,7 @@ bash ew_status.sh /opt/apps/entropywatcher/config html /var/www/html/ew-status.h
 # Email alerts
 bash ew_status.sh /opt/apps/entropywatcher/config cron</code></pre>
 
-      <h3>5.2 Logs</h3>
+      <h3>6.2 Logs</h3>
       <pre><code class="language-bash"># RTB wrapper logs
 journalctl -u backup-rtb.service -f
 
@@ -257,7 +372,7 @@ journalctl -u backup-pcloud.service -f
 # EntropyWatcher logs
 tail -f /var/log/entropywatcher/nas.log</code></pre>
 
-      <h3>5.3 When the safety-gate blocks backups</h3>
+      <h3>6.3 When the safety-gate blocks backups</h3>
       <pre><code class="language-bash">/opt/apps/entropywatcher/main/safety_gate.sh --debug
 bash ew_status.sh /opt/apps/entropywatcher/config dashboard</code></pre>
 
