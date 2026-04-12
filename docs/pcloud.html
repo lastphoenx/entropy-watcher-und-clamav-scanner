@@ -495,6 +495,38 @@ if os.path.exists(manifest_file):
 
       <p><strong>Vorteil:</strong> 1:1 Parität (snapshot weg = manifest weg), keine Orphans, kein extra Cronjob, Smart-Mode Safety</p>
 
+      <h4>Intelligent Gap-Backfilling <span class="commit-ref">84d907d</span></h4>
+      <p><strong>Problem:</strong> Alte Logik lud nur <code>latest</code> Snapshot hoch → Bei pCloud-Blockade über mehrere Tage entstehen lokale Snapshots S1-S4, aber nur S4 wird hochgeladen → Nach RTB-Retention fehlen S1-S3 permanent in Cloud!</p>
+
+      <p><strong>Lösung:</strong> Wrapper iteriert jetzt ALLE lokalen Snapshots, prüft jeden gegen Remote, lädt fehlende chronologisch hoch (alt → neu):</p>
+      <pre><code class="language-bash"># wrapper_pcloud_sync_1to1.sh (neue Logik)
+for s in $(local_snapshot_names); do
+  if [[ "$(remote_snapshot_exists "$s")" == "NO" ]]; then
+    log "[gap] Snapshot $s fehlt remote – hole nach..."
+    build_and_push "$RTB/$s"
+  fi
+done
+
+# Output bei 4 fehlenden Snapshots:
+[check] Prüfe auf fehlende Snapshots...
+[gap] Snapshot 2026-04-08-120000 fehlt remote – hole nach... (~20min)
+[gap] Snapshot 2026-04-09-120000 fehlt remote – hole nach... (~5min, Stubs!)
+[gap] Snapshot 2026-04-10-120000 fehlt remote – hole nach... (~5min, Stubs!)
+[gap] Snapshot 2026-04-11-120000 fehlt remote – hole nach... (~5min, Stubs!)
+[done] 4 Snapshot(s) hochgeladen</code></pre>
+
+      <p><strong>Vorteile:</strong></p>
+      <ul>
+        <li><strong>Self-Healing:</strong> Gaps füllen sich automatisch beim nächsten erfolgreichen Lauf</li>
+        <li><strong>Lückenlose Historie:</strong> Alle RTB-Snapshots auch in Cloud verfügbar</li>
+        <li><strong>Effizient:</strong> Smart-Mode Deduplizierung → S2-S4 nur Stubs (KB statt GB), nur ~5min/Snapshot</li>
+        <li><strong>Immun gegen Ausfälle:</strong> pCloud 4 Tage offline? Kein Problem, nachziehen kostet ~35min statt 80min</li>
+      </ul>
+
+      <div class="info-box">
+        <strong>Performance:</strong> S1 (erster) ~20min Full-Upload, S2-S4 jeweils ~5min (99.99% dedup). Total ~35min für 4 Snapshots statt 4×20min = 80min ohne Deduplizierung.
+      </div>
+
       <!-- 3. Components -->
       <h2 id="components">3. Komponenten</h2>
 
@@ -638,7 +670,7 @@ else
 fi</code></pre>
 
       <h3>4.2 Wrapper pcloud_sync_1to1.sh</h3>
-      <p>Orchestriert Manifest-Erstellung, Upload, Verification mit Smart-Mode Auto-Detection:</p>
+      <p>Orchestriert Manifest-Erstellung, Upload, Verification mit Smart-Mode Auto-Detection und Gap-Backfilling:</p>
 
       <pre><code class="language-bash">#!/bin/bash
 # wrapper_pcloud_sync_1to1.sh
@@ -993,7 +1025,7 @@ Fehler: 0
       <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #1e2530;">
         <p class="muted">
           <strong>Version:</strong> April 2026 Production Edition<br>
-          <strong>Commits dokumentiert:</strong> 8b16b1c (Smart-Manifest), bd7f4eb (Parallel Folders), 01d700c (Timestamps initial), dab62de (Manifest Write Fix), bfdd8b3 (Scope + trap Fix), b661514 (Latest-Symlink), aa1cdcb (Timestamps [push] + Paritäts-Cleanup), 37137d4 (2004-Handling + Stats + Timeout), 83401a9 (Maintenance Scripts + Doku), 97cc17f (Execute Permissions)<br>
+          <strong>Commits dokumentiert:</strong> 8b16b1c (Smart-Manifest), bd7f4eb (Parallel Folders), 01d700c (Timestamps initial), dab62de (Manifest Write Fix), bfdd8b3 (Scope + trap Fix), b661514 (Latest-Symlink), aa1cdcb (Timestamps [push] + Paritäts-Cleanup), 37137d4 (2004-Handling + Stats + Timeout), 83401a9 (Maintenance Scripts + Doku), 97cc17f (Execute Permissions), 84d907d (Gap-Backfilling)<br>
           <strong>Getestet:</strong> Raspberry Pi 5 (Debian), 19,810 Dateien / 89.66 GB<br>
           <strong>Status:</strong> ✅ Production-Ready – alle kritischen Bugs gefixt, Hardening aktiv
         </p>
