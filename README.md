@@ -408,6 +408,95 @@ safety_gate.sh (vor jedem Backup)
 └─ EXIT 0 (GREEN) → weiter zu EntropyWatcher-Checks
 ```
 
+### systemd Security Architecture & Environment Inheritance
+
+**Design-Prinzip: Strikte Trennung von systemd-Services und CLI-Nutzung**
+
+`entropywatcher.py` hat eine eingebaute Sicherheits-Regel, die verhindert, dass systemd-Services mit unsicheren `--env` Parametern gestartet werden:
+
+```python
+def _launched_by_systemd() -> bool:
+    return any(k in os.environ for k in ("INVOCATION_ID", "JOURNAL_STREAM", "NOTIFY_SOCKET"))
+
+# In main():
+if systemd and env_files:
+    sys.stderr.write("Fehler: Unter systemd sind zusätzliche --env Dateien nicht erlaubt.\n")
+    sys.exit(2)  # CRITICAL
+```
+
+**Warum diese Regel existiert:**
+
+Systemd-Services sollten **alle** Konfiguration über die `.service`-Datei (via `EnvironmentFile=`) bekommen. Wenn jemand in der Service-Definition zusätzlich `--env /tmp/malicious.env` einbaut, könnte das:
+- Unerwartete Konfiguration laden (Security Bypass)
+- Production-Settings überschreiben (z.B. `ALERT_ENTROPY_ABS=10.0` → keine Alarme mehr)
+- Credentials aus unsicheren Quellen laden
+
+Die strikte Regel **erzwingt** best practices: Systemd-Services = nur `EnvironmentFile=`, CLI = flexibel mit `--env`.
+
+**Das Problem der Umgebungs-Vererbung (systemd chains):**
+
+Wenn ein systemd-Service (z.B. `monitoring-status-update.service`) andere Scripts aufruft, die wiederum `entropywatcher.py status` ausführen, entsteht ein Problem:
+
+```
+monitoring-status-update.service (systemd)
+└─ INVOCATION_ID, JOURNAL_STREAM gesetzt
+   └─ aggregate_status.sh (Bash)
+      └─ safety_gate.sh (Bash)
+         └─ entropywatcher.py status --env nas.env --env common.env
+            └─ ❌ FEHLER: Skript sieht systemd-Variablen + --env → Exit 2 (RED)
+```
+
+Das Skript "denkt", es ist ein systemd-Service und lehnt die `--env` Parameter ab, obwohl es nur ein **read-only Status-Check** von einem Monitoring-Script ist.
+
+**Die Lösung: Chirurgisches Entfernen der systemd-Variablen**
+
+In `safety_gate.sh` nutzen wir `env -u` um die systemd-Umgebung **nur für den Status-Check** zu verstecken:
+
+```bash
+# Definition in safety_gate.sh:
+CLEAN_CALL="env -u INVOCATION_ID -u JOURNAL_STREAM -u NOTIFY_SOCKET"
+
+# Aufruf:
+$CLEAN_CALL "$ENTROPYWATCHER_PY" "$ENTROPYWATCHER_SCRIPT" \
+  --env "$ENTROPYWATCHER_COMMON_ENV" \
+  --env "$SERVICE_ENV" \
+  status --json-out /dev/null 2>/dev/null
+```
+
+**Warum das die Sicherheit NICHT gefährdet:**
+
+1. **Echte systemd-Services bleiben geschützt:**  
+   Wenn jemand versucht, in `entropywatcher-nas.service` ein `--env /tmp/bad.env` einzubauen, greift die Sicherheitsprüfung weiterhin. Systemd setzt die Variablen direkt, ohne `env -u`.
+
+2. **Nur in safety_gate.sh:**  
+   Nur dort wo wir **explizit** einen read-only Status-Check durchführen, entfernen wir die Variablen. Das ist eine bewusste, dokumentierte Ausnahme.
+
+3. **Minimaler Scope:**  
+   `env -u` wirkt nur für diesen einen Befehl. Der Rest der Monitoring-Chain behält die systemd-Umgebung.
+
+**Konsequenz:**
+
+Diese Architektur erlaubt:
+- ✅ Strikte Sicherheit für echte systemd-Services (Production)
+- ✅ Flexible CLI-Nutzung mit `--env` für Entwicklung/Testing
+- ✅ Status-Checks aus Monitoring-Chains (Dashboard, aggregate_status.sh)
+- ❌ Verhindert unsichere `--env` in Production-Services
+
+**Debugging-Tipp:**
+
+Wenn `safety_gate.sh` unerwartet `RED` (Exit 2) liefert:
+
+```bash
+# Prüfe ob systemd-Variablen gesetzt sind:
+env | grep -E 'INVOCATION_ID|JOURNAL_STREAM|NOTIFY_SOCKET'
+
+# Teste manuell (sollte funktionieren):
+/opt/apps/entropywatcher/main/safety_gate.sh
+
+# Teste aus systemd-Kontext (kann fehlschlagen ohne env -u):
+sudo systemctl status monitoring-status-update.service
+```
+
 ## Alert Logic
 
 **Entropie-Flags werden gesetzt bei:**
