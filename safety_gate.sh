@@ -29,6 +29,10 @@ ENTROPYWATCHER_PY="${ENTROPYWATCHER_PY:-/opt/apps/entropywatcher/venv/bin/python
 ENTROPYWATCHER_SCRIPT="${ENTROPYWATCHER_SCRIPT:-/opt/apps/entropywatcher/main/entropywatcher.py}"
 ENTROPYWATCHER_COMMON_ENV="${ENTROPYWATCHER_COMMON_ENV:-/opt/apps/entropywatcher/config/common.env}"
 
+# Sauberer Aufruf ohne systemd-Kontext (für Status-Checks in systemd Units)
+# Dies verhindert den Konflikt: entropywatcher.py denkt es ist ein Service und lehnt --env ab
+CLEAN_CALL="env -u INVOCATION_ID -u JOURNAL_STREAM -u NOTIFY_SOCKET"
+
 # Strict Mode (blockiert auch bei YELLOW)
 STRICT_MODE=0
 if [[ "${1:-}" == "--strict" ]]; then
@@ -100,7 +104,7 @@ for SERVICE in "${SERVICES[@]}"; do
   log "Prüfe Service: $SERVICE ..."
   
   set +e
-  "$ENTROPYWATCHER_PY" "$ENTROPYWATCHER_SCRIPT" \
+  $CLEAN_CALL "$ENTROPYWATCHER_PY" "$ENTROPYWATCHER_SCRIPT" \
     --env "$ENTROPYWATCHER_COMMON_ENV" \
     --env "$SERVICE_ENV" \
     status --json-out /dev/null 2>/dev/null
