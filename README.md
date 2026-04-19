@@ -1,144 +1,42 @@
 # EntropyWatcher & ClamAV Scanner
 
-Pre-Backup Security Gate für Debian-Systeme. Kombiniert Entropie-Analyse, ClamAV-Scanning und Honeyfile-basierte Intrusion Detection, um Backups vor Malware und Ransomware zu schützen.
+Pre-Backup Security Gate für Debian-Systeme. Kombiniert Entropie-Analyse, ClamAV-Scanning und Honeyfile-basierte Intrusion Detection.
 
 **Hauptvorteil:** Safety-Gate-Mechanismus blockiert Backups bei kritischen Funden → verhindert Malware-Verbreitung in Backup-Historie und Cloud-Storage.
 
 **Optimiert für:** Linux/Debian, Raspberry Pi NAS-Systeme
 
----
-
-## 📚 Table of Contents
-
-- [🏗️ Projekt-Übersicht](#️-projekt-übersicht-secure-nas--backup-ecosystem)
-  - [📦 Repositories](#-repositories)
-  - [🎯 Die Entstehungsgeschichte](#-die-entstehungsgeschichte)
-  - [🔗 Zusammenspiel der Komponenten](#-zusammenspiel-der-komponenten)
-- [🛠️ Technologie-Stack](#️-technologie-stack)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Features](#features)
-- [Examples](#examples)
-- [Honeyfile Setup](#honeyfile-setup)
-- [Architecture](#architecture)
-- [Alert Logic](#alert-logic)
-- [Monitoring & Logs](#monitoring--logs)
-- [Typical Deployment](#typical-deployment)
-- [Best Practices](#best-practices)
-- [📚 Erweiterte Dokumentation](#-erweiterte-dokumentation)
-- [Contributing](#contributing)
-- [License](#license)
+→ **Architektur & Hintergrund:** [docs/BACKSTORY.md](docs/BACKSTORY.md)  
+→ **Installation:** [docs/INSTALLATION.md](docs/INSTALLATION.md)  
+→ **Developer Guide:** [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)  
+→ **Monitoring:** [docs/MONITORING.md](docs/MONITORING.md)
 
 ---
 
-# 🏗️ Projekt-Übersicht: Secure NAS & Backup Ecosystem
+## 📦 Repository Ecosystem
 
-## 📦 Repositories
+Dieses Projekt ist Teil einer mehrstufigen Backup-Pipeline:
 
-Dieses Projekt besteht aus mehreren zusammenhängenden Komponenten:
+| Repository | Funktion |
+|------------|----------|
+| **[entropy-watcher-und-clamav-scanner](https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner)** (hier) | Pre-Backup Security Gate |
+| **[rtb](https://github.com/lastphoenx/rtb)** | Delta-Detection für Rsync Time Backup |
+| **[pcloud-tools](https://github.com/lastphoenx/pcloud-tools)** | Deduplizierte Cloud-Backups |
+| **[rsync-time-backup](https://github.com/laurent22/rsync-time-backup)** (extern) | Hardlink-basierte Snapshots |
 
-- **[EntropyWatcher & ClamAV Scanner](https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner)** - Pre-Backup Security Gate mit Intrusion Detection
-- **[pCloud-Tools](https://github.com/lastphoenx/pcloud-tools)** - Deduplizierte Cloud-Backups mit JSON-Manifest
-- **[RTB Wrapper](https://github.com/lastphoenx/rtb)** - Delta-Detection für Rsync Time Backup
-- **[Rsync Time Backup](https://github.com/laurent22/rsync-time-backup)** (Original) - Hardlink-basierte lokale Backups
-
----
-
-## 🎯 Die Entstehungsgeschichte
-
-### Von proprietären NAS-Systemen zu Debian
-
-Die Reise begann mit Frustration: **QNAP** (TS-453 Pro, TS-473A, TS-251+) und **LaCie 5big NAS Pro** waren zwar funktional, aber sobald man mehr als die Standard-Features wollte, wurde es zum Gefrickel. Autostart-Scripts, limitierte Shell-Umgebungen, fehlende Packages - man kam einfach nicht ans Ziel.
-
-**Die Lösung:** Wechsel auf ein vollwertiges **Debian-System**. Hardware: **Raspberry Pi 5** mit **Radxa Penta SATA HAT** (5x 2.5" SATA-SSDs), Samba-Share mit Recycling-Bin. Volle Kontrolle, Standard-Tools, keine Vendor-Lock-ins.
-
-### Der Weg zur vollautomatisierten Backup-Pipeline
-
-#### 1️⃣ **RTB Wrapper** - Delta-gesteuerte Backups
-
-Ziel: Automatisierte lokale Backups mit Deduplizierung über Standard-Debian-Tools.
-
-Ich entschied mich für [Rsync Time Backup](https://github.com/laurent22/rsync-time-backup) - ein cleveres Script, das `rsync --hard-links` nutzt, um platzsparende Snapshots zu erstellen. **Problem:** Das Script lief immer, auch wenn keine Änderungen vorlagen.
-
-**Lösung:** Der [RTB Wrapper](https://github.com/lastphoenx/rtb) prüft vorher ob überhaupt ein Delta existiert (via `rsync --dry-run`). Nur bei echten Änderungen wird das Backup ausgeführt.
-
-#### 2️⃣ **EntropyWatcher + ClamAV** - Pre-Backup Security Gate
-
-Eine Erkenntnis: **Backups von infizierten Dateien sind wertlos.** Schlimmer noch - sie verbreiten Malware in die Backup-Historie und Cloud.
-
-**Lösung:** [EntropyWatcher & ClamAV Scanner](https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner) analysiert `/srv/nas` (und optional das OS) auf:
-- **Entropy-Anomalien** (verschlüsselte/komprimierte verdächtige Dateien)
-- **Malware-Signaturen** (ClamAV)
-- **Safety-Gate-Mechanismus:** Backups werden nur bei grünem Status ausgeführt
-
-Später erweitert auf das gesamte Betriebssystem (`/`, `/boot`, `/home`).
-
-#### 3️⃣ **Honeyfiles** - Intrusion Detection mit Ködern
-
-Der **Shai-Hulud 2.0 npm Worm** zeigte: Moderne Malware sucht aktiv nach Credentials (`~/.aws/credentials`, `.git-credentials`, `.env`-Dateien).
-
-**Gegenmaßnahme:** **Honeyfiles** - 7 Köder-Dateien mit **randomisierten Namen und Pfaden** (gespeichert in `/opt/apps/entropywatcher/config/honeyfile_paths`), überwacht durch **auditd** auf Kernel-Ebene:
-- **Tier 1:** Zugriff auf Honeyfile = sofortiger Alarm + Backup-Blockade
-- **Tier 2:** Zugriff auf Honeyfile-Config = verdächtig
-- **Tier 3:** Manipulation an auditd = kritischer Alarm
-
-**Sicherheits-Feature:** Dateinamen und Speicherorte werden bei Installation randomisiert (z.B. `credentials_a7f3e_20251214` statt `credentials`) → Angreifer können die Pfade nicht aus öffentlicher Dokumentation erraten.
-
-#### 4️⃣ **pCloud-Tools** - Deduplizierte Cloud-Backups
-
-Mit funktionierender lokaler Backup- und Security-Pipeline kam die Frage: **Wie bekomme ich das sicher in die Cloud?**
-
-**Anforderung:** Deduplizierung wie bei `rsync --hard-links` (Inode-Prinzip), aber `rclone` konnte das nicht.
-
-**Lösung:** [pCloud-Tools](https://github.com/lastphoenx/pcloud-tools) mit **JSON-Manifest-Architektur**:
-- **JSON-Stub-System:** Jedes Backup speichert nur Metadaten + Verweise auf echte Files
-- **Inhalts-basierte Deduplizierung:** Gleicher SHA256-Hash = gleiche Datei = kein Upload
-- **Restore-Funktion:** Rekonstruiert komplette Backups aus Manifests + File-Pool
-
----
-
-## 🔗 Zusammenspiel der Komponenten
-
+**Pipeline-Ablauf:**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  1. EntropyWatcher + ClamAV (Safety Gate)                   │
-│     ↓ GREEN = Sicher | YELLOW = Warnung | RED = STOP        │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ (nur bei GREEN)
-┌─────────────────────────────────────────────────────────────┐
-│  2. RTB Wrapper prüft: Hat sich was geändert?               │
-│     ↓ JA = Delta erkannt | NEIN = Skip Backup               │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ (nur bei Delta)
-┌─────────────────────────────────────────────────────────────┐
-│  3. Rsync Time Backup (lokale Snapshots mit Hard-Links)     │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  4. pCloud-Tools (deduplizierter Upload in Cloud)           │
-└─────────────────────────────────────────────────────────────┘
-
-       [Honeyfiles überwachen parallel das gesamte System]
+EntropyWatcher + ClamAV → RTB Wrapper → rsync-time-backup → pCloud-Tools
+    (Safety Gate)         (Delta Check)   (Local Snapshots)   (Cloud Sync)
 ```
 
----
-
-## 🛠️ Technologie-Stack
-
-- **OS:** Debian Bookworm (Raspberry Pi 5)
-- **Storage:** 5x 2.5" SATA SSD (Radxa Penta SATA HAT)
-- **File Sharing:** Samba mit Recycling-Bin
-- **Security:** auditd, ClamAV, Python-basierte Entropy-Analyse
-- **Backup:** rsync, JSON-Manifests, pCloud API
-- **Automation:** Bash, systemd-timer, Git-Workflow
+**Mehr Details:** [docs/BACKSTORY.md](docs/BACKSTORY.md) - Entstehungsgeschichte & Zusammenspiel
 
 ---
 
-## Installation
+## 🚀 Quick Start
 
-### Quick Start – Local Development
-
-For testing and development without systemd integration:
+**Local Development:**
 
 ```bash
 git clone https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner
@@ -148,353 +46,122 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-cp examples/config/common.env.example config/common.env
-cp examples/config/nas.env.example config/nas.env
-# Edit .env files with database credentials and paths
+# First scan
+./entropywatcher.py scan --paths /srv/nas
 ```
 
-### Production Installation (Automated)
-
-**Interactive mode (recommended):**
+**Production Installation:**
 
 ```bash
+# Interactive setup (empfohlen)
 sudo ./install.sh --interactive
+
+# Installs: MariaDB, Python venv, systemd services, auditd, ClamAV (optional)
 ```
 
-**Non-interactive mode (CI/CD):**
+**Detaillierte Anleitung:** [docs/INSTALLATION.md](docs/INSTALLATION.md)
+
+---
+
+## 📖 Usage
+
+**Basic Commands:**
 
 ```bash
-sudo ./install.sh --non-interactive \
-  --db-password "secure_password" \
-  --smtp-host mail.example.com \
-  --smtp-user alerts@example.com \
-  --smtp-password "smtp_password" \
-  --admin-email admin@example.com \
-  --install-clamav
+# Initialize baseline
+./entropywatcher.py init-scan --paths /srv/nas
+
+# Run entropy scan
+./entropywatcher.py scan --paths /srv/nas
+
+# ClamAV scan
+./entropywatcher.py av-scan --paths /srv/nas/Downloads
+
+# Generate report
+./entropywatcher.py report --source nas --only-flagged
 ```
 
-**What gets installed:**
-- MariaDB with `entropywatcher` database
-- Python venv with all dependencies
-- systemd services + timers
-- auditd rules for honeyfile monitoring
-- ClamAV (optional)
-- Complete configuration templates
-
-See [docs/INSTALLATION.md](docs/INSTALLATION.md) for detailed setup instructions.
-
-## Usage
-
-```
-Usage: entropywatcher.py [COMMAND] [OPTIONS]
-
-Commands:
-  init-scan     Initialize baseline entropy values for specified paths
-  scan          Perform delta scan (only changed files) with periodic full scans
-  av-scan       Run ClamAV scan on specified paths
-  report        Generate reports (CSV/JSON export available)
-  tag-exempt    Mark file as exempt from alerting (still measured)
-  tag-normal    Remove exempt status from file
-
-Options:
-  --paths       Comma-separated list of paths to scan
-  --force       Force re-initialization of baseline
-  --source      Filter by source (os|nas)
-  --only-flagged  Show only flagged files in report
-  --export      Export report to file
-  --format      Export format (csv|json)
-
-Umgebungsvariablen werden aus .env-Dateien geladen:
-  common.env    Globale Defaults (DB, Mail, Schwellwerte)
-  nas.env       NAS-spezifische Konfiguration
-  os.env        OS-Scan Konfiguration
-  *-av.env      ClamAV-spezifische Einstellungen
-```
-
-## Features
-
-* **Entropy-basierte Anomalie-Erkennung** - Misst Dateientropie über Zeit (Baseline + Delta-Tracking)
-
-* **ClamAV Integration** - Signatur-basiertes Malware-Scanning mit automatischen Updates
-
-* **Honeyfile Intrusion Detection** - Kernel-Level Überwachung via auditd mit 3-Tier-Alarm-System
-
-* **Safety Gate Mechanismus** - Backup-Blockade bei kritischen Funden (EXIT 2 = RED)
-
-* **Smart Scanning** - Delta-Scans mit periodischen Vollprüfungen, überspringt unveränderte Dateien
-
-* **Rate-Limited Alerts** - Verhindert E-Mail-Spam durch konfigurierbare Mindestintervalle
-
-* **Flexible Configuration** - ENV-basierte Multi-Job-Profile (NAS, OS, AV-Hot, AV-Weekly)
-
-* **systemd Integration** - Timer-gesteuerte Ausführung mit Journal-Logging
-
-* **Export & Reporting** - CSV/JSON-Export, gefilterte Reports (nur flagged, seit missing)
-
-## Examples
-
-* **Baseline für NAS-Share erstellen:**
+**Production (systemd):**
 
 ```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  init-scan --paths "/srv/nas/User1,/srv/nas/Shared"
-```
-
-* **Delta-Scan durchführen:**
-
-```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  scan --paths "/srv/nas/User1,/srv/nas/Shared"
-```
-
-* **ClamAV-Scan auf Hot-Ordner:**
-
-```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  av-scan --paths "/srv/nas/Downloads,/srv/nas/Incoming"
-```
-
-* **Report generieren (nur flagged):**
-
-```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  report --source nas --only-flagged
-```
-
-* **CSV-Export für Analyse:**
-
-```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  report --source os --export /tmp/entropy_report.csv --format csv
-```
-
-* **Datei als exempt markieren (zählt, alarmiert nicht):**
-
-```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  tag-exempt /srv/nas/User1/false_positive.zip
-```
-
-* **Exempt-Status entfernen:**
-
-```bash
-/opt/entropywatcher/venv/bin/python /opt/entropywatcher/entropywatcher.py \
-  tag-normal /srv/nas/User1/false_positive.zip
-```
-
-* **Systemd-Timer Setup (empfohlen):**
-
-```bash
-# Service-Files nach /etc/systemd/system/ kopieren
-sudo systemctl daemon-reload
-
-# Timer aktivieren (nicht Services!)
+# Enable timers (not services!)
 sudo systemctl enable --now entropywatcher-nas.timer
 sudo systemctl enable --now entropywatcher-os.timer
-sudo systemctl enable --now entropywatcher-nas-av.timer
 
-# Status prüfen
+# Check status
 systemctl list-timers | grep entropywatcher
+journalctl -u entropywatcher-nas.service -n 50
 ```
 
-## Honeyfile Setup
+**Alle Commands & Optionen:** [docs/MONITORING.md](docs/MONITORING.md#ad-hoc-report-generieren)
 
-**Zweck:** Erkennt Ransomware/Malware, die nach Credentials sucht (NPM-Worms, Cloud-Token-Diebe).
+---
 
-**Sicherheits-Prinzip:** Honeyfile-Pfade und -Namen werden bei Installation **randomisiert** (z.B. `/root/.aws/credentials_a7f3e_20251214` statt des dokumentierten `/root/.aws/credentials`). Dadurch können Angreifer die Köder nicht aus öffentlicher Dokumentation erraten. Die tatsächlichen Pfade werden in `/opt/apps/entropywatcher/config/honeyfile_paths` gespeichert und von auditd/monitor automatisch gelesen.
+## ⚡ Features
 
-**Vollautomatisches Setup:**
+- **Entropy-basierte Anomalie-Erkennung** - Misst Dateientropie über Zeit (Baseline + Delta)
+- **ClamAV Integration** - Signatur-basiertes Malware-Scanning
+- **Honeyfile Intrusion Detection** - auditd-Köder mit 3-Tier-Alarm
+- **Safety Gate** - Blockiert Backups bei Funden (EXIT 0=GREEN, 1=YELLOW, 2=RED)
+- **Smart Scanning** - Delta-Scans + periodische Vollprüfungen
+- **systemd Integration** - Timer + Journal-Logging
+- **Export & Reporting** - CSV/JSON-Export, gefilterte Reports
 
-```bash
-sudo bash /opt/apps/entropy-watcher/setup_honeyfiles.sh
-```
+**Details:** [docs/CONFIG.md](docs/CONFIG.md), [docs/HONEYFILE_SETUP.md](docs/HONEYFILE_SETUP.md)
 
-Das Script erledigt:
-- ✅ Generiert 7 Köder-Dateien mit **randomisierten Namen** (z.B. `credentials_a7f3e_20251214`)
-- ✅ Speichert tatsächliche Pfade in `/opt/apps/entropywatcher/config/honeyfile_paths`
-- ✅ Konfiguriert auditd Rules (Tier 1/2/3: Zugriff, Config-Sniffing, Audit-Tampering)
-- ✅ Installiert systemd Units (honeyfile-monitor.service + .timer, alle 5 Min)
-- ✅ Aktiviert & startet Timer automatisch
-- ✅ Gibt **Copy-Paste-Strings mit korrekten randomisierten Pfaden** in die CLI aus
+---
 
-**Nach Installation: Excludes konfigurieren**
+## 🛡️ Safety-Gate Integration
 
-**Wichtig:** Die folgenden Beispiele zeigen Platzhalter. Das Setup-Script gibt am Ende die **echten randomisierten Pfade** aus, die du kopieren musst:
+EntropyWatcher ist **production-kritisch** in der Backup-Pipeline integriert:
 
-```bash
-# EntropyWatcher (common.env oder Service-ENV):
-SCAN_EXCLUDES="/root/.aws/credentials_a7f3e_20251214,/root/.git-credentials_b8g2h_20251214,..."
+**Externe Abhängigkeiten (NICHT VERSCHIEBEN!):**
+- `safety_gate.sh` → Referenziert von `rtb/rtb_wrapper.sh` und `pcloud-tools/aggregate_status.sh`
+- `honeyfile_monitor.sh` → Referenziert von `systemd/honeyfile-monitor.service`
+- `scripts/forecast_safety_gate.sh` → Referenziert von pCloud-Tools Dashboard
 
-# ClamAV (/etc/clamav/clamd.conf):
-ExcludePath ^/root/.aws/credentials_a7f3e_20251214$
-ExcludePath ^/root/.git-credentials_b8g2h_20251214$
-# ...
+**Status-Codes:**
+- **EXIT 0 (GREEN):** System sicher, Backup erlaubt
+- **EXIT 1 (YELLOW):** Warnungen, Backup mit Vorbehalt
+- **EXIT 2 (RED):** Kritisch, Backup blockiert
 
-sudo systemctl reload clamd@main
-```
+**Technische Details:** [docs/DEVELOPER_GUIDE.md#systemd-security-architecture](docs/DEVELOPER_GUIDE.md#systemd-security-architecture)
 
-**💡 Tipp:** Nach Setup-Ausführung scrolle zum Ende der Ausgabe - dort findest du fertige Copy-Paste-Strings mit den korrekten randomisierten Pfaden für `common.env` und `clamd.conf`.
+---
 
-**Mail-Konfiguration (automatisch):**
+## 📚 Dokumentation
 
-`honeyfile_monitor.sh` liest Einstellungen aus `common.env`:
+| Guide | Inhalt |
+|-------|--------|
+| [INSTALLATION.md](docs/INSTALLATION.md) | Server-Setup, systemd, MariaDB, ClamAV |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | systemd Security, Environment Inheritance, Debugging |
+| [CONFIG.md](docs/CONFIG.md) | .env-Dateien, Schwellwerte, SMTP |
+| [MONITORING.md](docs/MONITORING.md) | Logs, Status-Checks, Alerting, Dashboard |
+| [HONEYFILE_SETUP.md](docs/HONEYFILE_SETUP.md) | Intrusion Detection, auditd-Rules |
+| [BACKSTORY.md](docs/BACKSTORY.md) | Entstehungsgeschichte, Lessons Learned |
+| [TESTING.md](docs/TESTING.md) | Unit-Tests, Integrationstests |
+| [UTILITIES.md](docs/UTILITIES.md) | Helper-Scripts, Tools-Verzeichnis |
 
-```bash
-MAIL_ENABLE=1
-MAIL_SMTP_HOST=mail.example.com
-MAIL_SMTP_PORT=587
-MAIL_STARTTLS=1
-MAIL_USER=alerts@example.com
-MAIL_PASS='geheim'
-MAIL_TO=admin@example.com
-```
+**HTML-Doku:** [docs/index.html](docs/index.html) - Interaktive Timing-Diagramme, Prozess-Flows
 
-**Monitoring:**
+---
 
-```bash
-# Live-Prüfung
-/usr/local/bin/honeyfile_monitor.sh
+## 🤝 Contributing
 
-# Logs
-journalctl -u honeyfile-monitor.service -n 50
+Contributions welcome! Bitte beachte:
+- Code-Style: PEP 8 für Python, ShellCheck-clean für Bash
+- Tests: Neue Features benötigen Tests
+- Docs: Updates im relevanten `docs/*.md` File
 
-# Audit-Events
-sudo ausearch -k honeyfile_access --start recent
+---
 
-# Alert-Flag prüfen
-ls -la /var/lib/honeyfile_alert
-```
+## 📄 License
 
-**Entfernen:**
+MIT License - siehe [LICENSE](LICENSE) File.
 
-```bash
-sudo bash /opt/apps/entropy-watcher/setup_honeyfiles.sh --remove
-```
+---
 
-## Architecture
-
-**Programm:** `/opt/entropywatcher/entropywatcher.py` (eine CLI für alle Funktionen)
-
-**Datenbank:** MariaDB-Tabelle `files`
-- `path` - Dateipfad
-- `last_entropy` - Aktueller Entropie-Wert
-- `prev_entropy` - Vorheriger Wert (für Sprung-Detection)
-- `start_entropy` - Baseline (erste Messung)
-- `scanned_at` - Letzter Scan-Zeitstempel
-- `score_exempt` - Flag (1 = nicht alarmieren, aber messen)
-- `flagged_at` - Wann wurde alarmiert?
-
-**Konfiguration (.env-Dateien):**
-- `common.env` → Globale Defaults (DB, Mail-Transport, Schwellwerte)
-- Pro Job eigene ENV: `nas.env`, `os.env`, `nas-av.env`, `os-av-weekly.env`
-
-**systemd:**
-- `.service` führt einmalig aus (Type=oneshot), setzt ENV-Dateien, User, ExecStart
-- `.timer` triggert den Service zeitgesteuert (nur Timer aktivieren!)
-
-**Logging:** Journal mit eigenem SyslogIdentifier (z.B. `ew-os-scan`) → `journalctl -t ew-os-scan`
-
-**Safety Gate Integration:**
-
-```
-honeyfile-monitor.service (alle 5 Min)
-├─ Prüft Audit-Log auf verdächtige Zugriffe
-├─ Setzt /var/lib/honeyfile_alert Flag
-└─ Sendet Email-Alert
-
-safety_gate.sh (vor jedem Backup)
-├─ Liest /var/lib/honeyfile_alert + live Audit-Log
-├─ EXIT 2 (RED) → Backup blockiert
-└─ EXIT 0 (GREEN) → weiter zu EntropyWatcher-Checks
-```
-
-### systemd Security Architecture & Environment Inheritance
-
-**Design-Prinzip: Strikte Trennung von systemd-Services und CLI-Nutzung**
-
-`entropywatcher.py` hat eine eingebaute Sicherheits-Regel, die verhindert, dass systemd-Services mit unsicheren `--env` Parametern gestartet werden:
-
-```python
-def _launched_by_systemd() -> bool:
-    return any(k in os.environ for k in ("INVOCATION_ID", "JOURNAL_STREAM", "NOTIFY_SOCKET"))
-
-# In main():
-if systemd and env_files:
-    sys.stderr.write("Fehler: Unter systemd sind zusätzliche --env Dateien nicht erlaubt.\n")
-    sys.exit(2)  # CRITICAL
-```
-
-**Warum diese Regel existiert:**
-
-Systemd-Services sollten **alle** Konfiguration über die `.service`-Datei (via `EnvironmentFile=`) bekommen. Wenn jemand in der Service-Definition zusätzlich `--env /tmp/malicious.env` einbaut, könnte das:
-- Unerwartete Konfiguration laden (Security Bypass)
-- Production-Settings überschreiben (z.B. `ALERT_ENTROPY_ABS=10.0` → keine Alarme mehr)
-- Credentials aus unsicheren Quellen laden
-
-Die strikte Regel **erzwingt** best practices: Systemd-Services = nur `EnvironmentFile=`, CLI = flexibel mit `--env`.
-
-**Das Problem der Umgebungs-Vererbung (systemd chains):**
-
-Wenn ein systemd-Service (z.B. `monitoring-status-update.service`) andere Scripts aufruft, die wiederum `entropywatcher.py status` ausführen, entsteht ein Problem:
-
-```
-monitoring-status-update.service (systemd)
-└─ INVOCATION_ID, JOURNAL_STREAM gesetzt
-   └─ aggregate_status.sh (Bash)
-      └─ safety_gate.sh (Bash)
-         └─ entropywatcher.py status --env nas.env --env common.env
-            └─ ❌ FEHLER: Skript sieht systemd-Variablen + --env → Exit 2 (RED)
-```
-
-Das Skript "denkt", es ist ein systemd-Service und lehnt die `--env` Parameter ab, obwohl es nur ein **read-only Status-Check** von einem Monitoring-Script ist.
-
-**Die Lösung: Chirurgisches Entfernen der systemd-Variablen**
-
-In `safety_gate.sh` nutzen wir `env -u` um die systemd-Umgebung **nur für den Status-Check** zu verstecken:
-
-```bash
-# Definition in safety_gate.sh:
-CLEAN_CALL="env -u INVOCATION_ID -u JOURNAL_STREAM -u NOTIFY_SOCKET"
-
-# Aufruf:
-$CLEAN_CALL "$ENTROPYWATCHER_PY" "$ENTROPYWATCHER_SCRIPT" \
-  --env "$ENTROPYWATCHER_COMMON_ENV" \
-  --env "$SERVICE_ENV" \
-  status --json-out /dev/null 2>/dev/null
-```
-
-**Warum das die Sicherheit NICHT gefährdet:**
-
-1. **Echte systemd-Services bleiben geschützt:**  
-   Wenn jemand versucht, in `entropywatcher-nas.service` ein `--env /tmp/bad.env` einzubauen, greift die Sicherheitsprüfung weiterhin. Systemd setzt die Variablen direkt, ohne `env -u`.
-
-2. **Nur in safety_gate.sh:**  
-   Nur dort wo wir **explizit** einen read-only Status-Check durchführen, entfernen wir die Variablen. Das ist eine bewusste, dokumentierte Ausnahme.
-
-3. **Minimaler Scope:**  
-   `env -u` wirkt nur für diesen einen Befehl. Der Rest der Monitoring-Chain behält die systemd-Umgebung.
-
-**Konsequenz:**
-
-Diese Architektur erlaubt:
-- ✅ Strikte Sicherheit für echte systemd-Services (Production)
-- ✅ Flexible CLI-Nutzung mit `--env` für Entwicklung/Testing
-- ✅ Status-Checks aus Monitoring-Chains (Dashboard, aggregate_status.sh)
-- ❌ Verhindert unsichere `--env` in Production-Services
-
-**Debugging-Tipp:**
-
-Wenn `safety_gate.sh` unerwartet `RED` (Exit 2) liefert:
-
-```bash
-# Prüfe ob systemd-Variablen gesetzt sind:
-env | grep -E 'INVOCATION_ID|JOURNAL_STREAM|NOTIFY_SOCKET'
-
-# Teste manuell (sollte funktionieren):
-/opt/apps/entropywatcher/main/safety_gate.sh
-
-# Teste aus systemd-Kontext (kann fehlschlagen ohne env -u):
-sudo systemctl status monitoring-status-update.service
+**Zurück nach oben:** [⬆️](#entropywatcher--clamav-scanner)
 ```
 
 ## Alert Logic
