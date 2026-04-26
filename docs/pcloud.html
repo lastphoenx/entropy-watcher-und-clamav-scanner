@@ -256,13 +256,14 @@
         <span class="badge badge-green"><span class="badge-dot"></span> Production (Raspberry Pi 5)</span>
         <span class="badge badge-blue">Schema v3</span>
         <span class="badge badge-blue">Python 3.11+</span>
+        <span class="badge badge-green">Chunked Upload + Resume</span>
         <span class="badge">EntropyWatcher Safety-Gate</span>
         <span class="badge">RTB + pCloud 1:1</span>
         <span class="badge badge-green">19,810 files tested</span>
       </div>
 
       <div class="info-box">
-        <strong>Production Status (April 2026):</strong> Alle kritischen Bugs gefixt, Hardening-Features aktiv, erfolgreich getestet mit 19,810 Dateien / 89.66 GB Uploads. Smart-Manifest erreicht 600× Speedup, parallele Ordner-Anlage 4× Speedup.
+        <strong>Production Status (April 2026):</strong> Alle kritischen Bugs gefixt, Hardening-Features aktiv, erfolgreich getestet mit 19,810 Dateien / 89.66 GB Uploads. Smart-Manifest erreicht 600× Speedup, parallele Ordner-Anlage 4× Speedup. <strong>Neu: Chunked-Upload mit Resume für große Dateien (>5 GB).</strong>
       </div>
 
       <!-- Table of Contents -->
@@ -272,6 +273,7 @@
           <li><a href="#overview">1. Konzept & Architektur</a></li>
           <li><a href="#april-2026-improvements">2. April 2026 Hardening & Performance</a></li>
           <li><a href="#components">3. Komponenten</a></li>
+          <li><a href="#chunked-upload">3.5 Chunked Upload with Resume</a></li>
           <li><a href="#workflow">4. Production Workflow</a></li>
           <li><a href="#maintenance">5. Wartung & Troubleshooting</a></li>
           <li><a href="#integration">6. EntropyWatcher Integration</a></li>
@@ -645,6 +647,133 @@ Orphaned: 1 (RTB-Snapshot fehlt)</code></pre>
       <div class="info-box">
         <strong>Hinweis:</strong> Ab Commit <span class="commit-ref">aa1cdcb</span> läuft Paritäts-Cleanup automatisch bei <code>retention_sync</code>. Dieses Script ist nur noch für Legacy-Cleanup oder manuelle Eingriffe nötig.
       </div>
+
+      <h3 id="chunked-upload">3.5 Chunked Upload with Resume (Large File Support)</h3>
+      <p><strong>Status:</strong> Production-Ready seit April 2026 <span class="commit-ref">7d988a4</span> <span class="commit-ref">10249fc</span></p>
+
+      <div class="info-box">
+        <strong>Problemstellung:</strong> Große Dateien (>5 GB) wie VM-Images oder vollständige Backup-Archives brachen bei Netzwerkunterbrechungen von 0 neu an. 98% Upload → Timeout → 100% Neustart ❌
+      </div>
+
+      <p><strong>Lösung:</strong> Chunked-Upload mit State-Persistenz → Resume bei Unterbrechung ✅</p>
+
+      <h4>Architektur & Funktionsweise</h4>
+      <pre><code class="language-bash"># Smart Routing (in pcloud_push_json_manifest_to_pcloud.py):
+_upload_file_smart():
+  file_size = os.path.getsize(local_path)
+  if file_size > 5 GB:
+      → _upload_file_resumable()   # Chunked mit Resume
+  else:
+      → pc.upload_file()            # Standard (wie bisher)</code></pre>
+
+      <h4>Features</h4>
+      <ul>
+        <li><strong>Threshold-basiert:</strong> Nur Files >5 GB nutzen Chunked-Upload (kein Overhead für 99% der Dateien)</li>
+        <li><strong>State-Persistenz:</strong> Nach jedem 128 MB Chunk wird State gespeichert (<code>/srv/pcloud-archive/resume/*.state.json</code>)</li>
+        <li><strong>Server-Sync:</strong> <code>upload_info()</code> prüft Server-Offset vor Resume (verhindert Duplikate)</li>
+        <li><strong>Retry-Logik:</strong> 5 Attempts pro Chunk mit Exponential Backoff (2-16s)</li>
+        <li><strong>SHA256-Verifikation:</strong> Nach Upload wird <code>checksumfile()</code> mit lokalem Hash verglichen</li>
+        <li><strong>Automatic Resume:</strong> Bei Script-Neustart wird State geladen und bei letztem Offset fortgesetzt</li>
+      </ul>
+
+      <div class="table-wrapper">
+        <table>
+          <tr>
+            <th>Dateigröße</th>
+            <th>Methode</th>
+            <th>Chunks</th>
+            <th>Upload-Zeit</th>
+            <th>Resume-Fähig</th>
+          </tr>
+          <tr>
+            <td>< 5 GB</td>
+            <td>Standard-Upload</td>
+            <td>N/A</td>
+            <td>Normal</td>
+            <td>❌ (von 0 neu)</td>
+          </tr>
+          <tr>
+            <td>6 GB</td>
+            <td>Chunked (48× 128MB)</td>
+            <td>48</td>
+            <td>+5% overhead</td>
+            <td>✅ (bei Abbruch)</td>
+          </tr>
+          <tr>
+            <td>20 GB</td>
+            <td>Chunked (160× 128MB)</td>
+            <td>160</td>
+            <td>+5% overhead</td>
+            <td>✅ (bei Abbruch)</td>
+          </tr>
+          <tr>
+            <td>50 GB</td>
+            <td>Chunked (400× 128MB)</td>
+            <td>400</td>
+            <td>+5% overhead</td>
+            <td>✅ (bei Abbruch)</td>
+          </tr>
+        </table>
+      </div>
+
+      <h4>Beispiel: Resume nach Netzwerk-Timeout</h4>
+      <pre><code class="language-bash"># Upload-Start:
+2026-04-26 14:30:00 [chunked] Große Datei (15.23 GB): backup.img
+2026-04-26 14:30:01 [chunked] Erstelle Upload-Session... uploadid: 1696654321
+2026-04-26 14:30:01 [chunked] Starte Upload: 15.23 GB @ 128 MB Chunks
+2026-04-26 14:31:00 [chunked] Progress: 1,342,177,280/16,356,000,000 Bytes (8.2%)
+2026-04-26 14:35:00 [chunked] Progress: 3,221,225,472/16,356,000,000 Bytes (19.7%)
+→ Netzwerk-Timeout → Script-Abbruch
+
+# State-File wurde gespeichert: backup.img_abc123.state.json
+# {
+#   "uploadid": 1696654321,
+#   "offset": 3221225472,  ← 3 GB hochgeladen
+#   "file_hash": "...",
+#   "status": "in_progress"
+# }
+
+# Script-Neustart:
+2026-04-26 14:40:00 [chunked] Lade State: backup.img_abc123.state.json
+2026-04-26 14:40:01 [chunked] Resume @ 3,221,225,472 Bytes (19.7%)
+2026-04-26 14:40:01 [chunked] Offset-Korrektur: Lokal=3221225472 Server=3221225472 ✓
+2026-04-26 14:41:00 [chunked] Progress: 4,697,620,480/16,356,000,000 Bytes (28.7%)
+...
+2026-04-26 15:10:00 [chunked] Finalisiere Upload...
+2026-04-26 15:10:02 [chunked] Upload abgeschlossen: FileID=93799999999
+2026-04-26 15:10:03 [chunked] ✓ SHA256 verifiziert</code></pre>
+
+      <h4>Konfiguration</h4>
+      <pre><code class="language-bash"># Umgebungsvariablen (optional):
+export PCLOUD_RESUME_THRESHOLD_GB=10   # Threshold auf 10 GB erhöhen
+export PCLOUD_RESUME_CHUNK_MB=256      # Größere Chunks (weniger API-Calls)
+export PCLOUD_RESUME_DIR=/custom/path  # State-Directory überschreiben</code></pre>
+
+      <h4>Testing</h4>
+      <p>Production-Grade-Test mit echtem RTB-Snapshot:</p>
+      <pre><code class="language-bash"># End-to-End-Test (isoliert von Produktion)
+cd /opt/apps/pcloud-tools/main
+bash scripts/test_chunked_rtb_snapshot.sh
+
+# Features:
+# • RTB-Snapshot mit 5+ Dateien (1 KB bis 6 GB)
+# • Mixed-Mode-Upload (Standard + Chunked im selben Job)
+# • Resume-Test (Upload nach 60s killen, dann neustarten)
+# • SHA256-Verifikation aller Dateien
+# • Isolierte Test-Index-DB (keine Produktions-Kontamination)
+
+# Dauer: ~5-7 Min (inkl. SHA256-Berechnung)</code></pre>
+
+      <div class="info-box">
+        <strong>Sicherheit:</strong> Der Test-Script nutzt <code>--index-path "$TEST_ROOT/index_dir/test_index.json"</code> um die zentrale Produktions-Index-DB zu schützen. Alle Uploads gehen in <code>/My Cloud/TEST_CHUNKED_RTB/</code> (nicht in produktive Backups).
+      </div>
+
+      <p><strong>Dokumentation:</strong></p>
+      <ul>
+        <li>Technische Details: <a href="https://github.com/lastphoenx/pcloud-tools/blob/main/docs/DEVELOPER_GUIDE.md#-chunked-upload-with-resume-large-file-support" target="_blank">DEVELOPER_GUIDE.md § Chunked Upload</a></li>
+        <li>Test-README: <code>scripts/README_test_chunked.md</code></li>
+        <li>PoC-Script: <code>scripts/testing/poc_chunked_resume.py</code> (200 MB Test-Datei)</li>
+      </ul>
 
       <!-- 4. Production Workflow -->
       <h2 id="workflow">4. Production Workflow</h2>
