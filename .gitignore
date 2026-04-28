@@ -48,6 +48,13 @@ tmp/
 *.bak*
 *test*
 *check*
+
+# --- Test & Sample Files ---
+*_sample.json
+*_test.json
+recursive_list*.json
+scratch/
+playground/
 # ABER: Wichtige Utility-Scripts und Dokumentation MÜSSEN committed werden:
 !ew_backup_slot_check.sh
 !tools/test_mail_config.py
