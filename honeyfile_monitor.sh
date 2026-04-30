@@ -3,7 +3,7 @@ set -euo pipefail
 
 AUDIT_KEY="honeyfile_access"
 ALERT_FLAG="/var/lib/honeyfile_alert"
-LAST_PROCESSED="/var/lib/honeyfile_last_alert_ts"
+LAST_PROCESSED="${HONEYFILE_LAST_PROCESSED:-/var/lib/honeyfile_last_alert_ts}"
 LOG_FILE="${HONEYFILE_LOG_FILE:-/var/log/honeyfile_monitor.log}"
 COMMON_ENV="${COMMON_ENV:-/opt/apps/entropywatcher/config/common.env}"
 HONEYFILE_PATHS_CONFIG="/opt/apps/entropywatcher/config/honeyfile_paths"
