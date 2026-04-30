@@ -53,7 +53,7 @@ for env_file in "${CONFIG_DIR}"/*.env; do
   fi
 done
 
-if [[ ${#SERVICES[@]} -eq 0 ]]; then
+if [[ -z "${SERVICES[*]:-}" ]]; then
   echo "ERROR: Keine Services gefunden in $CONFIG_DIR"
   exit 1
 fi
