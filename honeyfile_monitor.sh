@@ -2,9 +2,10 @@
 set -euo pipefail
 
 AUDIT_KEY="honeyfile_access"
-ALERT_FLAG="/var/lib/honeyfile_alert"
+ALERT_FLAG="${HONEYFILE_ALERT_FLAG:-/var/lib/honeyfile_alert}"
 LAST_PROCESSED="${HONEYFILE_LAST_PROCESSED:-/var/lib/honeyfile_last_alert_ts}"
 LOG_FILE="${HONEYFILE_LOG_FILE:-/var/log/honeyfile_monitor.log}"
+SCRIPT_PID=$$
 COMMON_ENV="${COMMON_ENV:-/opt/apps/entropywatcher/config/common.env}"
 HONEYFILE_PATHS_CONFIG="/opt/apps/entropywatcher/config/honeyfile_paths"
 
@@ -126,11 +127,11 @@ fi
 # ============================================================================
 if [[ -f "$LAST_PROCESSED" ]]; then
     LAST_TIME=$(cat "$LAST_PROCESSED")
-    CONFIG_ACCESS=$(ausearch -k "honeyfile_config_access" --start "$LAST_TIME" 2>/dev/null || echo "")
+    CONFIG_ACCESS=$(ausearch -k "honeyfile_config_access" --start "$LAST_TIME" 2>/dev/null | grep -v "pid=$SCRIPT_PID" || echo "")
     AUDIT_TAMPERING=$(ausearch -k "audit_tampering" --start "$LAST_TIME" 2>/dev/null || echo "")
     AUDIT_CONFIG_CHANGE=$(ausearch -k "audit_config_change" --start "$LAST_TIME" 2>/dev/null || echo "")
 else
-    CONFIG_ACCESS=$(ausearch -k "honeyfile_config_access" --start recent 2>/dev/null || echo "")
+    CONFIG_ACCESS=$(ausearch -k "honeyfile_config_access" --start recent 2>/dev/null | grep -v "pid=$SCRIPT_PID" || echo "")
     AUDIT_TAMPERING=$(ausearch -k "audit_tampering" --start recent 2>/dev/null || echo "")
     AUDIT_CONFIG_CHANGE=$(ausearch -k "audit_config_change" --start recent 2>/dev/null || echo "")
 fi
