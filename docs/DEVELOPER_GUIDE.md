@@ -119,6 +119,44 @@ fi
 
 ---
 
+### RTB Wrapper: Backup Loop Prevention (seit Mai 2026)
+
+**Problem:** Tools wie **pCloud Commander** laden Dateien in `/srv/nas/restore/` herunter —
+ein Unterverzeichnis der RTB-Backup-Quelle. Das erzeugt beim nächsten RTB-Lauf ein Delta
+und triggert ein unnötiges Backup (Backup-Loop-Risiko).
+
+**Implementierung in `rtb_wrapper.sh`:**
+
+```bash
+# Konfiguration (oben im Skript)
+RTB_AUTO_EXCLUDE_RESTORE=${RTB_AUTO_EXCLUDE_RESTORE:-1}
+RTB_RESTORE_EXCLUDE_PATTERN=${RTB_RESTORE_EXCLUDE_PATTERN:-/restore/}
+
+# Effektive Exclude-Datei bauen
+if [[ "$RTB_AUTO_EXCLUDE_RESTORE" -eq 1 ]]; then
+  TMP_RTB_EXCL="$(mktemp /tmp/rtb_excludes_effective.XXXXXX)"
+  cp "$RTB_EXCL" "$TMP_RTB_EXCL"
+  if ! grep -qF "$RTB_RESTORE_EXCLUDE_PATTERN" "$TMP_RTB_EXCL"; then
+    printf '%s\n' "$RTB_RESTORE_EXCLUDE_PATTERN" >> "$TMP_RTB_EXCL"
+  fi
+  EFFECTIVE_RTB_EXCL="$TMP_RTB_EXCL"
+  trap '[[ -n "$TMP_RTB_EXCL" ]] && rm -f "$TMP_RTB_EXCL" || true' EXIT
+fi
+```
+
+**Zwei Schutzschichten:**
+1. **`excludes.txt`** enthält statisch `/restore/` → gilt auch bei manuellem Aufruf ohne Wrapper
+2. **`EFFECTIVE_RTB_EXCL`** Temp-Datei → Wrapper-Laufzeit, Sicherheitsnetz bei direkter Bearbeitung
+
+**Alle drei rsync-Aufrufe** im Wrapper nutzen `EFFECTIVE_RTB_EXCL`:
+- `--check-only` Dry-Run (Change Detection für Monitoring)
+- Pre-Backup Delta-Check (vor dem eigentlichen RTB-Aufruf)
+- `rsync_tmbackup.sh`-Übergabe
+
+Kein Eingriff in `rsync_tmbackup.sh` nötig (upstream-Datei bleibt unberührt).
+
+---
+
 ### Die Lösung: `env -u`
 
 **Implementierung in `safety_gate.sh`:**

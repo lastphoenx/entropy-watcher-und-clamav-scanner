@@ -570,6 +570,14 @@
             <strong>Solution:</strong> The <a href="https://github.com/lastphoenx/rtb" target="_blank" style="color: var(--accent);">RTB Wrapper</a> 
             checks beforehand if a delta exists (via <code>rsync --dry-run</code>). Backups only execute when actual changes are detected.
           </p>
+          <p style="margin-top: 0.75rem; padding: 0.6rem 1rem; background: rgba(16,185,129,0.07); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 0.92rem;">
+            <strong>Backup Loop Prevention:</strong> Tools like <strong>pCloud Commander</strong> download files into
+            <code>/srv/nas/restore/</code> — a subdirectory of the backup source. Without exclusion this would trigger
+            a new backup on every download run. The RTB Wrapper uses a two-layer guard: a static entry
+            <code>/restore/</code> in <code>excludes.txt</code> and an automatic runtime
+            <code>EFFECTIVE_RTB_EXCL</code> merge in <code>rtb_wrapper.sh</code>
+            (<code>RTB_AUTO_EXCLUDE_RESTORE=1</code>, configurable via env).
+          </p>
         </div>
 
         <div style="margin: 2rem 0;">
