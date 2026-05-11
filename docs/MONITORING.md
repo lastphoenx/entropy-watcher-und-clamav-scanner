@@ -257,7 +257,230 @@ cat /opt/apps/monitoring/status.json | jq '.services.entropywatcher'
 
 ---
 
-## 🐛 Debugging
+## � API Reference - entropywatcher.py status Response
+
+### JSON Response Schema
+
+Wenn `entropywatcher.py status --json` aufgerufen wird, gibt es ein strukturiertes JSON zurück:
+
+```json
+{
+  "status": "yellow",
+  "since": "2026-04-24T17:27:10",
+  "window_min": 75,
+  "counters": {
+    "av_findings": 0,
+    "flagged": 0,
+    "age_min": 3.48,
+    "safeage_min": 10
+  },
+  "last_runs": {
+    "scan": "2026-04-24T17:23:41",
+    "av_scan": null
+  },
+  "reasons": [
+    "too_fresh_to_trust"
+  ]
+}
+```
+
+### Status-Werte
+
+| Status | Exit Code | Bedeutung |
+|--------|-----------|-----------|
+| `green` | 0 | Alle Checks OK, Backup erlaubt |
+| `yellow` | 1 | Warnung, Backup mit Vorsicht (im strict-mode blockiert) |
+| `red` | 2 | Kritisch, Backup blockiert |
+
+### Reasons-Array
+
+Das `reasons`-Array enthält die **konkreten Gründe** für YELLOW oder RED Status:
+
+| Reason Code | Status | Bedeutung | Action |
+|-------------|--------|-----------|--------|
+| `too_fresh_to_trust` | YELLOW | Scan jünger als `HEALTH_SAFEAGE_MIN` (meist 10 min) | Warten auf "Abkühlzeit" - System wartet ab, ob eine laufende Ransomware-Verschlüsselung noch nicht erkannt wurde |
+| `no_recent_runs` | YELLOW | Kein Scan innerhalb `HEALTH_WINDOW_MIN` (meist 120 min) | Timer/Service prüfen: `systemctl status entropywatcher-nas.timer` |
+| `av_findings_present` | RED | AV-Scanner (ClamAV) hat Malware gefunden | Logs prüfen: `journalctl -u entropywatcher-nas-av.service`, Quarantine checken |
+| `flagged_files_present` | RED | EntropyWatcher hat Entropy-Anomalien gefunden | Report ausführen: `entropywatcher.py report --only-flagged` |
+| `missing_files_detected` | YELLOW/RED | Dateien aus vorherigem Scan fehlen (gelöscht) | Prüfen ob legitim oder Ransomware-Löschung |
+
+### Verwendung in Safety-Gate
+
+Das Safety-Gate-Script (`safety_gate.sh`) nutzt diese Reasons, um detaillierte Logs zu schreiben:
+
+```bash
+# Beispiel-Log mit Reason:
+2026-04-24 17:27:10 [SafetyGate]   ⚠ nas: YELLOW (too_fresh_to_trust)
+```
+
+Diese Reasons werden dann von `aggregate_status.sh` in die `status.json` übernommen und im Dashboard angezeigt:
+
+```json
+{
+  "scripts": {
+    "rtb_wrapper": {
+      "live_sg_details": "Honeyfiles: OK | nas: YELLOW (too_fresh_to_trust) | nas-av: GREEN"
+    }
+  }
+}
+```
+
+---
+
+## Live Safety-Gate Details (`live_sg_details`)
+
+**Feature:** Echtzeit-Statusanzeige aller Safety-Gate-Komponenten mit individuellen Reasons
+
+**Eingeführt:** April 2026  
+**Script:** `aggregate_status.sh` sammelt diese Information während der Live-Prüfung
+
+### Format
+
+```text
+Honeyfiles: <STATUS> [(<reason>)] | <component1>: <STATUS> [(<reason>)] | <component2>: <STATUS> [(<reason>)]
+```
+
+**Beispiel:**
+```text
+Honeyfiles: OK | nas: YELLOW (too_fresh_to_trust) | nas-av: GREEN | os: GREEN | os-av: GREEN
+```
+
+### Verwendung im Dashboard
+
+Das Dashboard zeigt `live_sg_details` in der **Backup-Tile** an:
+- **Label:** "Safety-Gate (live)" wenn verfügbar, sonst "Safety-Gate (hist.)"
+- **Anzeige:** Vollständige Details in der Detail-Ansicht unter "└ Komponenten"
+- **Farbe:** Basierend auf dem schlechtesten Status (GREEN → YELLOW → RED)
+
+### Unterschied: Live vs. Historical
+
+| Feld | Quelle | Zeitpunkt | Verwendung |
+|------|--------|-----------|------------|
+| `live_safety_gate` | Aktueller `safety_gate.sh` Aufruf | Während Backup-Check | Zeigt **aktuellen** Sicherheitsstatus |
+| `safety_gate` | Letzter erfolgreicher Backup | Nach Backup-Completion | Zeigt historischen Status vom letzten Lauf |
+| `live_sg_details` | Aktueller Safety-Gate mit Reasons | Während Backup-Check | **Debugging**: Zeigt welche Komponente YELLOW/RED ist |
+
+### Beispiel-Szenarien
+
+#### Szenario 1: Scan zu frisch (too_fresh_to_trust)
+```json
+{
+  "live_safety_gate": "YELLOW",
+  "live_sg_details": "Honeyfiles: OK | nas: YELLOW (too_fresh_to_trust) | nas-av: GREEN",
+  "safety_gate": "GREEN"
+}
+```
+**Interpretation:** Letztes Backup war GREEN, aber aktueller Check zeigt YELLOW weil nas-Scan erst 3 Minuten alt ist (< SAFEAGE_MIN=10min).
+
+#### Szenario 2: ClamAV Fund (av_findings_present)
+```json
+{
+  "live_safety_gate": "RED",
+  "live_sg_details": "Honeyfiles: OK | nas: GREEN | nas-av: RED (av_findings_present)",
+  "safety_gate": "GREEN"
+}
+```
+**Interpretation:** ClamAV hat bei nas-av Malware gefunden → Backup wird blockiert.
+
+#### Szenario 3: Alles normal
+```json
+{
+  "live_safety_gate": "GREEN",
+  "live_sg_details": "Honeyfiles: OK | nas: GREEN | nas-av: GREEN | os: GREEN | os-av: GREEN",
+  "safety_gate": "GREEN"
+}
+```
+**Interpretation:** Alle Komponenten sind GREEN → Backup wird durchgeführt.
+
+### Troubleshooting mit live_sg_details
+
+Bei YELLOW/RED-Status:
+1. **Identifiziere betroffene Komponente** in `live_sg_details`
+2. **Lese Reason-Code** aus Klammern (siehe Tabelle oben)
+3. **Prüfe Component-Logs:**
+   ```bash
+   # Für "nas: YELLOW (too_fresh_to_trust)"
+   /opt/apps/entropywatcher/venv/bin/python \
+     /opt/apps/entropywatcher/main/entropywatcher.py \
+     --env /opt/apps/entropywatcher/config/common.env \
+     --env /opt/apps/entropywatcher/config/nas.env \
+     status --json
+   ```
+4. **Führe entsprechende Aktion aus** (siehe Tabelle in "API Reference" oben)
+
+---
+
+### Beispiel: Status-Abfrage mit Reason-Parsing
+
+```bash
+# Status als JSON abrufen
+JSON_OUTPUT=$(
+  /opt/apps/entropywatcher/venv/bin/python \
+    /opt/apps/entropywatcher/main/entropywatcher.py \
+    --env /opt/apps/entropywatcher/config/common.env \
+    --env /opt/apps/entropywatcher/config/nas.env \
+    status --json
+)
+
+# Status-Code extrahieren
+STATUS=$(echo "$JSON_OUTPUT" | jq -r '.status')
+
+# Reasons extrahieren
+REASONS=$(echo "$JSON_OUTPUT" | jq -r '.reasons[]' | paste -sd ',' -)
+
+echo "Status: $STATUS"
+echo "Gründe: $REASONS"
+
+# Output:
+# Status: yellow
+# Gründe: too_fresh_to_trust
+```
+
+### Troubleshooting anhand von Reasons
+
+**Bei `too_fresh_to_trust`:**
+```bash
+# Warte einfach die SAFEAGE_MIN ab (meist 10 Minuten)
+# Dann nochmal prüfen:
+sleep 600
+/opt/apps/entropywatcher/main/safety_gate.sh
+```
+
+**Bei `no_recent_runs`:**
+```bash
+# Timer prüfen
+systemctl list-timers | grep entropywatcher-nas
+
+# Timer manuell starten
+sudo systemctl start entropywatcher-nas.service
+```
+
+**Bei `av_findings_present`:**
+```bash
+# Letzte AV-Scan Ergebnisse anzeigen
+journalctl -u entropywatcher-nas-av.service -n 100 | grep "FOUND"
+
+# Quarantine-Verzeichnis prüfen
+ls -la /var/lib/clamav/quarantine/
+```
+
+**Bei `flagged_files_present`:**
+```bash
+# Detaillierter Report mit nur flagged Files
+/opt/apps/entropywatcher/venv/bin/python \
+  /opt/apps/entropywatcher/main/entropywatcher.py \
+  --env /opt/apps/entropywatcher/config/common.env \
+  --env /opt/apps/entropywatcher/config/nas.env \
+  report --only-flagged
+
+# Einzelne Datei untersuchen
+file /srv/nas/User1/suspicious.bin
+hexdump -C /srv/nas/User1/suspicious.bin | head -20
+```
+
+---
+
+## �🐛 Debugging
 
 ### Service startet nicht
 
