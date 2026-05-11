@@ -221,12 +221,18 @@ python3 /opt/apps/entropywatcher/main/tools/test_mail_config.py \
 
 Das [pCloud-Tools Monitoring-Dashboard](https://github.com/lastphoenx/pcloud-tools/tree/main/dashboard) zeigt EntropyWatcher-Status in Echtzeit:
 
-- **Safety-Gate Status:** GREEN/YELLOW/RED
+- **Safety-Gate Status:** GREEN/YELLOW/RED mit kontextuellen Links zu Troubleshooting-Docs
 - **EntropyWatcher Counters:** Flagged Files, Missing Files
 - **Last Scan Timestamps:** Alle Services
 - **ClamAV Findings:** Viren-Treffer
+- **Live Safety-Gate Details:** Zeigt YELLOW/RED Reasons pro Komponente
 
-**Installation:** Siehe [pCloud-Tools Dashboard README](https://github.com/lastphoenx/pcloud-tools/blob/main/dashboard/README.md)
+**Installation & URLs:**
+- Setup-Anleitung: [pCloud-Tools Dashboard README](https://github.com/lastphoenx/pcloud-tools/blob/main/dashboard/README.md)
+- Dashboard URL (nach April 2026 Update): `http://server-ip:8080/pcloud-tools/dashboard/index.html`
+- Diese Dokumentation im Dashboard: `http://server-ip:8080/entropy-watcher-und-clamav-scanner/docs/`
+
+> **💡 April 2026 Update:** Das Dashboard verwendet jetzt absolute Pfade für Multi-Repo Navigation. Der Webserver läuft aus `/opt/apps/` (siehe [DEPLOYMENT_UPDATE_2026.md](https://github.com/lastphoenx/pcloud-tools/blob/main/DEPLOYMENT_UPDATE_2026.md)).
 
 ### Status-JSON für Monitoring
 
