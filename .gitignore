@@ -60,6 +60,7 @@ playground/
 !tools/test_mail_config.py
 !tools/check_services.sh
 !docs/TESTING.md
+!docs/TESTING.html
 *~
 last_alert*.txt
 *.pid
