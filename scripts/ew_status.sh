@@ -2,11 +2,16 @@
 set -euo pipefail
 
 CONFIG_DIR="${1:-/opt/apps/entropywatcher/config}"
+# Remove trailing slash if present
+CONFIG_DIR="${CONFIG_DIR%/}"
 MODE="${2:-dashboard}"
 COMMON_ENV="${CONFIG_DIR}/common.env"
 
 if [[ ! -f "$COMMON_ENV" ]]; then
   echo "ERROR: common.env nicht gefunden: $COMMON_ENV"
+  # Debug: show directory content
+  echo "Inhalt von $(dirname "$COMMON_ENV"):"
+  ls -la "$(dirname "$COMMON_ENV")" 2>/dev/null || echo "Kann Verzeichnis nicht lesen"
   exit 1
 fi
 
@@ -39,11 +44,14 @@ get_health_window_for_service() {
 }
 
 for env_file in "${CONFIG_DIR}"/*.env; do
+  # Ensure it's a file and not the literal glob pattern
+  [[ ! -f "$env_file" ]] && continue
   [[ "$env_file" == "$COMMON_ENV" ]] && continue
   
-  if grep -q "^SOURCE_LABEL=" "$env_file" 2>/dev/null; then
+  # Lenient grep for SOURCE_LABEL
+  if grep -qiE "^\s*SOURCE_LABEL\s*=" "$env_file" 2>/dev/null; then
     # Read SOURCE_LABEL without sourcing (to avoid variable pollution)
-    SOURCE_LABEL=$(grep -E '^SOURCE_LABEL=' "$env_file" | sed 's/^[^=]*=//' | sed 's/#.*$//' | tr -d ' ')
+    SOURCE_LABEL=$(grep -iE '^\s*SOURCE_LABEL\s*=' "$env_file" | head -1 | sed 's/^[^=]*=//' | sed 's/#.*$//' | sed "s/[\"'[:space:]]//g")
     
     if [[ -n "$SOURCE_LABEL" ]]; then
       SERVICES["${SOURCE_LABEL}"]="$env_file"
@@ -53,8 +61,10 @@ for env_file in "${CONFIG_DIR}"/*.env; do
   fi
 done
 
-if [[ -z "${SERVICES[*]:-}" ]]; then
+if [[ ${#SERVICES[@]} -eq 0 ]]; then
   echo "ERROR: Keine Services gefunden in $CONFIG_DIR"
+  echo "Gefundene .env Dateien:"
+  ls -la "${CONFIG_DIR}"/*.env 2>/dev/null || echo "Keine .env Dateien gefunden oder Verzeichnis nicht lesbar"
   exit 1
 fi
 
