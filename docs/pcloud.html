@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pCloud Backup Tools – Production Documentation (April 2026)</title>
+    <title>pCloud Backup Tools – 1to1-Modus (Legacy) – Dokumentation April 2026</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
@@ -255,7 +255,13 @@
       </a>
     </div>
     <main>
-      <h1>pCloud Backup Tools</h1>
+      <div style="background:#7c2d12;border:2px solid #dc2626;border-radius:8px;padding:1rem 1.5rem;margin-bottom:1.5rem;color:#fca5a5;">
+        <strong>⚠️ Hinweis: Diese Dokumentation beschreibt den 1to1-Modus (eingestellt, Juni 2026).</strong><br>
+        Das System läuft seit Juni 2026 im <strong>Pool-Modus</strong> (<code>wrapper_pcloud_pool_sync_1to1.sh</code>,
+        <code>pcloud_push_json_pool_manifest_to_pcloud.py</code>, Remote: <code>/Backup/rtb_pool/</code>).
+        Aktuelle Architektur: <a href="https://github.com/lastphoenx/pcloud-tools/blob/main/docs/ARCHITECTURE.md" style="color:#fca5a5;">pcloud-tools/docs/ARCHITECTURE.md</a>.
+      </div>
+      <h1>pCloud Backup Tools <small style="font-size:0.5em;color:#6b7280;">(1to1-Modus, Legacy)</small></h1>
       <p class="muted">Production-Ready Deduplicated Cloud Backups · April 2026 Edition</p>
 
       <div class="badge-row">
