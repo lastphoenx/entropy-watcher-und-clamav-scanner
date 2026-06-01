@@ -545,7 +545,7 @@
 
         <div class="info-section">
             <h3>📋 Detaillierter Ablauf (t=02:00 bis t=02:35)</h3>
-            <p><strong>02:00:00</strong> – Systemd Timer triggert <code>rtb_wrapper.sh</code></p>
+            <p><strong>02:00:00</strong> – Systemd Timer triggert <code>rtb_pool_wrapper.sh</code></p>
             <p><strong>02:00:01</strong> – Lock-Datei prüfen: <code>/run/backup_pipeline.lock</code></p>
             <p style="margin-left: 20px; color: #4ac8ae;">✓ Lock erfolgreich acquired (Verhindert Parallelität)</p>
             
@@ -570,7 +570,7 @@
             <p style="margin-left: 20px; color: #4ac8ae;">→ Safety-Delay 120s (warte nach RTB)</p>
             
             <p><strong>02:22:00</strong> – Manifest generieren (SHA256 pro Datei)</p>
-            <p style="margin-left: 20px; color: #4ac8ae;">→ <code>pcloud_json_manifest.py</code></p>
+            <p style="margin-left: 20px; color: #4ac8ae;">→ <code>pcloud_json_pool_manifest.py</code></p>
             <p style="margin-left: 20px; color: #4ac8ae;">→ Output: <code>manifest.json</code> mit allen Hashes</p>
             
             <p><strong>02:25:00</strong> – Upload zu pCloud mit Deduplication</p>
@@ -655,7 +655,7 @@
     </div>
 
     <footer>
-        <p>📖 Basierend auf: rtb_wrapper.sh | wrapper_pcloud_sync_1to1.sh | rsync_tmbackup.sh | safety_gate.sh</p>
+        <p>📖 Basierend auf: rtb_pool_wrapper.sh | wrapper_pcloud_pool_sync_1to1.sh | rsync_tmbackup.sh | safety_gate.sh</p>
         <p>🔐 pCloud Backup Tools – Production-Grade System mit Ransomware-Schutz</p>
     </footer>
 </body>

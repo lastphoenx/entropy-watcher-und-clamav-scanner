@@ -239,13 +239,13 @@
             <h2>📊 Backup-Pipeline Sequence (Systemd Services)</h2>
             
             <div class="info-box">
-                <strong>⚙️ Flow:</strong> Systemd Timer → rtb_wrapper.sh → [Safety-Gate?] → [Änderungen?] → RTB → pCloud-Sync
+                <strong>⚙️ Flow:</strong> Systemd Timer → rtb_pool_wrapper.sh → [Safety-Gate?] → [Änderungen?] → RTB → pCloud-Sync
             </div>
 
             <div class="mermaid">
                 sequenceDiagram
                     actor Timer as Systemd Timer
-                    participant RTB as rtb_wrapper.sh
+                    participant RTB as rtb_pool_wrapper.sh
                     participant Lock as Lock File
                     participant Gate as safety_gate.sh
                     participant Rsync as rsync (dry-run)
@@ -254,7 +254,7 @@
                     participant pCloud as pCloud API
                     participant DB as MariaDB
 
-                    Timer->>RTB: Timer triggert rtb_wrapper.sh
+                    Timer->>RTB: Timer triggert rtb_pool_wrapper.sh
                     Note over Timer: Systemd Timer (2:00 AM)
 
                     RTB->>Lock: Acquire LOCKFILE<br/>/run/backup_pipeline.lock
@@ -307,7 +307,7 @@
                     end
 
                     RTB->>pCloudW: 4️⃣ START pCloud-Sync<br/>(Automatisch nach RTB)
-                    Note over pCloudW: wrapper_pcloud_sync_1to1.sh
+                    Note over pCloudW: wrapper_pcloud_pool_sync_1to1.sh
                     Note over Lock: Lock NOCH GEHALTEN!
 
                     pCloudW->>pCloud: Preflight: OK?<br/>(Quota, Auth, Reachability)
@@ -349,7 +349,7 @@
 
             <div class="mermaid">
                 graph TD
-                    Start["Systemd Timer triggert<br/>rtb_wrapper.sh"]
+                    Start["Systemd Timer triggert<br/>rtb_pool_wrapper.sh"]
                     
                     LockCheck{"🔒 Lock verfügbar?"}
                     LockWait["⏳ Warten (max 2h)<br/>oder Skip"]
@@ -467,7 +467,7 @@ else: EXIT 0 (skip)
             <div class="warning-box">
                 <strong>🔒 CRITICAL:</strong> Selbes Lockfile für RTB UND pCloud-Sync!
                 <div class="code-block">
-# In rtb_wrapper.sh UND wrapper_pcloud_sync.sh:<br>
+# In rtb_pool_wrapper.sh UND wrapper_pcloud_sync.sh:<br>
 LOCKFILE=/run/backup_pipeline.lock<br>
 exec 9>"$LOCKFILE"<br>
 if ! flock -w 7200 9; then  # 2h Timeout<br>
@@ -564,7 +564,7 @@ fi<br>
             <h2>⏱️ Zeitbeispiel – Was passiert um 02:00?</h2>
 
             <div class="code-block">
-<strong>02:00:00</strong> – Systemd Timer triggert rtb_wrapper.sh<br>
+<strong>02:00:00</strong> – Systemd Timer triggert rtb_pool_wrapper.sh<br>
 <strong>02:00:01</strong> – Lock acquired (/run/backup_pipeline.lock)<br>
 <strong>02:00:02</strong> – safety_gate.sh abgerufen<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Query DB: flagged=0, av_findings=0, age ok?<br>
@@ -579,7 +579,7 @@ fi<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Hardlinks + neue Dateien<br>
 <strong>02:05:00</strong> – RTB fertig ✓<br>
 <br>
-<strong>02:05:01</strong> – wrapper_pcloud_sync_1to1.sh STARTS (automatisch)<br>
+<strong>02:05:01</strong> – wrapper_pcloud_pool_sync_1to1.sh STARTS (automatisch)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pCloud Preflight: OK?<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Safety-delay 120s (warte nach RTB)<br>
 <strong>02:07:00</strong> – Manifest generieren (SHA256)<br>
@@ -588,7 +588,7 @@ fi<br>
 <strong>02:15:00</strong> – pCloud-Sync fertig ✓<br>
 <br>
 <strong>02:15:01</strong> – Lock RELEASED (/run/backup_pipeline.lock)<br>
-<strong>02:15:02</strong> – rtb_wrapper.sh EXIT 0 (SUCCESS)<br>
+<strong>02:15:02</strong> – rtb_pool_wrapper.sh EXIT 0 (SUCCESS)<br>
 <br>
 <strong>═══ PIPELINE COMPLETE ═══</strong>
             </div>
@@ -686,7 +686,7 @@ fi<br>
     </div>
 
     <footer>
-        <p>📖 <strong>Skripte:</strong> rtb_wrapper.sh | wrapper_pcloud_sync_1to1.sh | rsync_tmbackup.sh | safety_gate.sh</p>
+        <p>📖 <strong>Skripte:</strong> rtb_pool_wrapper.sh | wrapper_pcloud_pool_sync_1to1.sh | rsync_tmbackup.sh | safety_gate.sh</p>
         <p>🔐 pCloud Backup Tools – Systemd-basiertes, robustes Backup-System mit Ransomware-Schutz</p>
         <p>✨ Generiert mit Mermaid.js</p>
     </footer>

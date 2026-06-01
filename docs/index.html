@@ -581,7 +581,7 @@
             <code>/srv/nas/restore/</code> — a subdirectory of the backup source. Without exclusion this would trigger
             a new backup on every download run. The RTB Wrapper uses a two-layer guard: a static entry
             <code>/restore/</code> in <code>excludes.txt</code> and an automatic runtime
-            <code>EFFECTIVE_RTB_EXCL</code> merge in <code>rtb_wrapper.sh</code>
+            <code>EFFECTIVE_RTB_EXCL</code> merge in <code>rtb_pool_wrapper.sh</code>
             (<code>RTB_AUTO_EXCLUDE_RESTORE=1</code>, configurable via env).
           </p>
         </div>
@@ -842,7 +842,7 @@
             <!-- Backup execution -->
             <rect x="730" y="600" width="220" height="50" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="6"/>
             <text x="840" y="623" text-anchor="middle" fill="#3b82f6" font-size="13" font-weight="600">📸 RTB Wrapper Starts</text>
-            <text x="840" y="641" text-anchor="middle" fill="#94a3b8" font-size="10">wrapper_pcloud_sync_1to1.sh</text>
+            <text x="840" y="641" text-anchor="middle" fill="#94a3b8" font-size="10">wrapper_pcloud_pool_sync_1to1.sh</text>
           </svg>
         </div>
 
@@ -963,7 +963,7 @@
 
             <!-- Level 5: RTB Wrapper / Change detection -->
             <rect x="520" y="930" width="360" height="110" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="8"/>
-            <text x="700" y="953" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="600">wrapper_pcloud_sync_1to1.sh</text>
+            <text x="700" y="953" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="600">wrapper_pcloud_pool_sync_1to1.sh</text>
             <text x="700" y="971" text-anchor="middle" fill="#94a3b8" font-size="11">Check: lock file / already ran today?</text>
             <text x="700" y="987" text-anchor="middle" fill="#94a3b8" font-size="11">Check: rsync --dry-run (NEW/CHANGED?)</text>
             <text x="700" y="1005" text-anchor="middle" fill="#10b981" font-size="10">✓ Nur Snapshot + Upload wenn Änderungen &amp; GREEN</text>
@@ -990,7 +990,7 @@
             <!-- Level 7: Intelligent Upload to pCloud -->
             <rect x="170" y="1200" width="440" height="90" fill="#020617" stroke="#3b82f6" stroke-width="2" rx="8"/>
             <text x="390" y="1225" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="600">☁️ Intelligent Upload to pCloud</text>
-            <text x="390" y="1243" text-anchor="middle" fill="#94a3b8" font-size="11">pcloud_json_manifest.py + pcloud_push_json_manifest_to_pcloud.py</text>
+            <text x="390" y="1243" text-anchor="middle" fill="#94a3b8" font-size="11">pcloud_json_pool_manifest.py + pcloud_push_json_manifest_to_pcloud.py</text>
             <text x="390" y="1259" text-anchor="middle" fill="#10b981" font-size="10">Use content_index.json → stubs for existing hashes, upload NEW/CHANGED only</text>
           </svg>
         </div>
@@ -1029,7 +1029,7 @@
               <div style="flex: 1;">
                 <h4 style="margin: 0 0 0.5rem; color: var(--accent); font-size: 1rem;">MANIFEST GENERATION</h4>
                 <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
-                  → pcloud_json_manifest.py<br>
+                  → pcloud_json_pool_manifest.py<br>
                   <span style="color: var(--text-dim); margin-left: 1rem;">├─ Scan snapshot directory tree</span><br>
                   <span style="color: var(--text-dim); margin-left: 1rem;">├─ Calculate SHA256 for each file</span><br>
                   <span style="color: var(--text-dim); margin-left: 1rem;">└─ Output: /tmp/manifest.json</span>
@@ -1100,7 +1100,7 @@
               <div style="flex: 1;">
                 <h4 style="margin: 0 0 0.5rem; color: #3b82f6; font-size: 1rem;">☁️ pCLOUD STORAGE</h4>
                 <code style="display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
-                  → /Backup/rtb_1to1/<br>
+                  → /Backup/rtb_pool/<br>
                   <span style="color: var(--text-dim); margin-left: 1rem;">├─ _snapshots/</span><br>
                   <span style="color: var(--text-dim); margin-left: 2rem;">├─ 2025-11-23-120000/ <span style="color: #10b981;">(first backup - full)</span></span><br>
                   <span style="color: var(--text-dim); margin-left: 2rem;">├─ 2025-11-24-120000/ <span style="color: #10b981;">(incremental - stubs + new)</span></span><br>
@@ -1131,7 +1131,7 @@
         <div class="diagram-container" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
           <div class="mermaid">
 graph TD
-  Start["Systemd Timer triggert<br/>rtb_wrapper.sh"]
+  Start["Systemd Timer triggert<br/>rtb_pool_wrapper.sh"]
   
   LockCheck{"🔒 Lock verfügbar?"}
   LockWait["⏳ Warten (max 2h)<br/>oder Skip"]
@@ -1151,7 +1151,7 @@ graph TD
   RTBStart["▶️ RTB START<br/>rsync_tmbackup.sh"]
   RTBSuccess{"RTB Exit<br/>Code = 0?"}
 
-  pCloudStart["▶️ pCloud-Sync START<br/>wrapper_pcloud_sync_1to1.sh"]
+  pCloudStart["▶️ pCloud-Sync START<br/>wrapper_pcloud_pool_sync_1to1.sh"]
 
   Preflight{"✅ pCloud Preflight<br/>(Quota, Auth)?"}
   pCloudProcess["Manifest → Push<br/>→ Deduplication"]
@@ -1350,7 +1350,7 @@ graph TD
             <!-- Step 13: Generate manifest -->
             <rect x="910" y="980" width="140" height="60" fill="#0f172a" stroke="#3b82f6" stroke-width="2" rx="4"/>
             <text x="980" y="1002" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">Generate Manifest</text>
-            <text x="980" y="1018" text-anchor="middle" fill="#94a3b8" font-size="9">pcloud_json_manifest.py</text>
+            <text x="980" y="1018" text-anchor="middle" fill="#94a3b8" font-size="9">pcloud_json_pool_manifest.py</text>
             <text x="980" y="1032" text-anchor="middle" fill="#10b981" font-size="9">SHA256 checksums</text>
 
             <!-- Step 14: Check safety gate again -->
@@ -1448,7 +1448,7 @@ graph TD
               <tr style="background: #020617;">
                 <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:05</td>
                 <td style="padding: 0.5rem 0.8rem;">pcloud_manifest.timer</td>
-                <td style="padding: 0.5rem 0.8rem;"><code>pcloud_json_manifest.py</code></td>
+                <td style="padding: 0.5rem 0.8rem;"><code>pcloud_json_pool_manifest.py</code></td>
                 <td style="padding: 0.5rem 0.8rem;">SHA256 je Datei berechnen</td>
                 <td style="padding: 0.5rem 0.8rem;">~10 min</td>
                 <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
@@ -1543,12 +1543,12 @@ PCLOUD_API_PORT=443
 PCLOUD_TOKEN=your_access_token_here
 
 # Backup paths
-PCLOUD_REMOTE_BASE=/Backup/rtb_1to1
+PCLOUD_REMOTE_BASE=/Backup/rtb_pool
 LOCAL_SNAPSHOT_DIR=/mnt/backup/rtb_nas/latest
 
 # Deduplication (object-store mode)
 OBJECT_STORE_MODE=1              # 1=enable, 0=flat copy
-CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
+CONTENT_INDEX_PATH=/Backup/rtb_pool/_index/content_index.json</code></pre>
           </div>
         </div>
 
@@ -1557,7 +1557,7 @@ CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
           <ol>
             <li>Create (or ask your admin to create) a dedicated pCloud account used only for backups.</li>
             <li>Ask your pCloud admin or pCloud support to issue an API token / app password for this account.</li>
-            <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_1to1</code>).</li>
+            <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_pool</code>).</li>
             <li>Store the received token in <code>PCLOUD_TOKEN</code> inside <code>pcloud.env</code> and keep the file readable only by the backup user (for example <code>chmod 600</code>).</li>
           </ol>
         </div>
@@ -2621,7 +2621,7 @@ journalctl -u entropywatcher-nas -f</code></pre>
               <td>✅ Yes</td>
             </tr>
             <tr>
-              <td><code>pcloud_json_manifest.py</code></td>
+              <td><code>pcloud_json_pool_manifest.py</code></td>
               <td>Generate manifest with SHA256 hashes for snapshot directory</td>
               <td>✅ Yes</td>
             </tr>
@@ -2641,7 +2641,7 @@ journalctl -u entropywatcher-nas -f</code></pre>
               <td>Recommended</td>
             </tr>
             <tr>
-              <td><code>wrapper_pcloud_sync_1to1.sh</code></td>
+              <td><code>wrapper_pcloud_pool_sync_1to1.sh</code></td>
               <td>Complete backup wrapper (RTB → manifest → safety gate → upload)</td>
               <td>✅ Yes</td>
             </tr>
@@ -2671,12 +2671,12 @@ PCLOUD_API_PORT=443
 PCLOUD_TOKEN=your_access_token_here
 
 # Backup paths
-PCLOUD_REMOTE_BASE=/Backup/rtb_1to1
+PCLOUD_REMOTE_BASE=/Backup/rtb_pool
 LOCAL_SNAPSHOT_DIR=/mnt/backup/rtb_nas/latest
 
 # Deduplication (object-store mode)
 OBJECT_STORE_MODE=1              # 1=enable, 0=flat copy
-CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
+CONTENT_INDEX_PATH=/Backup/rtb_pool/_index/content_index.json</code></pre>
           </div>
         </div>
 
@@ -2685,7 +2685,7 @@ CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
           <ol>
             <li>Create (or ask your admin to create) a dedicated pCloud account used only for backups.</li>
             <li>Ask your pCloud admin or pCloud support to issue an API token / app password for this account.</li>
-            <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_1to1</code>).</li>
+            <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_pool</code>).</li>
             <li>Store the received token in <code>PCLOUD_TOKEN</code> inside <code>pcloud.env</code> and keep the file readable only by the backup user (for example <code>chmod 600</code>).</li>
           </ol>
         </div>
@@ -2721,7 +2721,7 @@ CONTENT_INDEX_PATH=/Backup/rtb_1to1/_index/content_index.json</code></pre>
 
         <div class="code-wrapper">
           <div class="code-header">
-            <span class="code-label">wrapper_pcloud_sync_1to1.sh (simplified)</span>
+            <span class="code-label">wrapper_pcloud_pool_sync_1to1.sh (simplified)</span>
             <button class="copy-btn" data-copy>Copy</button>
           </div>
           <div class="code-block">
@@ -2732,7 +2732,7 @@ set -euo pipefail
 /opt/apps/rsync-time-backup/rsync_tmbackup.sh /srv/nas /mnt/backup/rtb_nas
 
 # 2. Generate manifest with SHA256 hashes
-python3 /opt/apps/pcloud-tools/pcloud_json_manifest.py \
+python3 /opt/apps/pcloud-tools/pcloud_json_pool_manifest.py \
   --snapshot /mnt/backup/rtb_nas/latest \
   --output /tmp/manifest.json
 

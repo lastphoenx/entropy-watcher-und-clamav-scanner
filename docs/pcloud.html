@@ -343,7 +343,7 @@
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  4. MANIFEST GENERATION (Smart-Mode)                        │
-│     pcloud_json_manifest.py --ref-manifest                  │
+│     pcloud_json_pool_manifest.py --ref-manifest                  │
 │     Schema v3: mtime/size Cache (600× Speedup!)           │
 │     99.99% cached → nur 1 neue SHA256                      │
 └─────────────────────────────────────────────────────────────┘
@@ -365,7 +365,7 @@
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  7. pCLOUD STORAGE                                          │
-│     /Backup/rtb_1to1/                                      │
+│     /Backup/rtb_pool/                                      │
 │     ├─ _snapshots/                                         │
 │     │  ├─ 2026-04-10-075334/ (JSON-Stubs)                │
 │     │  ├─ 2026-04-12-121042/ (JSON-Stubs)                │
@@ -513,7 +513,7 @@ if os.path.exists(manifest_file):
       <p><strong>Problem:</strong> Alte Logik lud nur <code>latest</code> Snapshot hoch → Bei pCloud-Blockade über mehrere Tage entstehen lokale Snapshots S1-S4, aber nur S4 wird hochgeladen → Nach RTB-Retention fehlen S1-S3 permanent in Cloud!</p>
 
       <p><strong>Lösung:</strong> Wrapper iteriert jetzt ALLE lokalen Snapshots, prüft jeden gegen Remote, lädt fehlende chronologisch hoch (alt → neu):</p>
-      <pre><code class="language-bash"># wrapper_pcloud_sync_1to1.sh (neue Logik)
+      <pre><code class="language-bash"># wrapper_pcloud_pool_sync_1to1.sh (neue Logik)
 for s in $(local_snapshot_names); do
   if [[ "$(remote_snapshot_exists "$s")" == "NO" ]]; then
     log "[gap] Snapshot $s fehlt remote – hole nach..."
@@ -544,12 +544,12 @@ done
       <!-- 3. Components -->
       <h2 id="components">3. Komponenten</h2>
 
-      <h3>3.1 pcloud_json_manifest.py</h3>
+      <h3>3.1 pcloud_json_pool_manifest.py</h3>
       <p>Erstellt JSON-Manifeste aus RTB-Snapshots mit SHA256-Hashes und Metadaten.</p>
 
       <h4>Smart-Mode (Schema v3) – 600× Speedup!</h4>
       <pre><code class="language-bash"># Mit Referenz-Manifest (mtime/size Cache)
-python pcloud_json_manifest.py \
+python pcloud_json_pool_manifest.py \
   --root /mnt/backup/rtb_nas/2026-04-12-163517 \
   --out /srv/pcloud-temp/manifest.json \
   --ref-manifest /srv/pcloud-archive/manifests/2026-04-12-121042.json \
@@ -565,7 +565,7 @@ python pcloud_json_manifest.py \
 
       <h4>Full-Mode (ohne Cache)</h4>
       <pre><code class="language-bash"># Erste Manifest-Erstellung (kein Referenz-Manifest)
-python pcloud_json_manifest.py \
+python pcloud_json_pool_manifest.py \
   --root /mnt/backup/rtb_nas/2026-04-10-075334 \
   --out /srv/pcloud-temp/manifest.json \
   --hash sha256
@@ -579,12 +579,12 @@ python pcloud_json_manifest.py \
 
       <pre><code class="language-bash">python pcloud_push_json_manifest_to_pcloud.py \
   --manifest /srv/pcloud-temp/pcloud_mani.2026-04-12-163517.json \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --snapshot-mode 1to1 \
   --env-file /opt/apps/pcloud-tools/main/.env
 
 # Output (mit Timestamps!):
-2026-04-12 16:35:23 [plan] Lade Remote-Ordnerstruktur: /Backup/rtb_1to1/_snapshots/2026-04-12-163517
+2026-04-12 16:35:23 [plan] Lade Remote-Ordnerstruktur: /Backup/rtb_pool/_snapshots/2026-04-12-163517
 2026-04-12 16:35:23 [plan] Lege 1101 fehlende Ordner an (von 1101 gesamt)
 2026-04-12 16:35:23 [folders] 10 Ebenen, 4 Threads pro Ebene
 2026-04-12 16:40:43 [folders] ✓ 1101 Ordner erfolgreich angelegt (~5min 20s, 4× Speedup!)
@@ -597,7 +597,7 @@ python pcloud_json_manifest.py \
       <p>Fast Tamper Detection für hochgeladene Snapshots (2s für 20k Dateien via single API call).</p>
 
       <pre><code class="language-bash">python pcloud_quick_delta.py \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --env-file .env \
   --json-out /srv/pcloud-temp/delta_verify.json
 
@@ -635,7 +635,7 @@ python pcloud_json_manifest.py \
         <li>Latest-Symlink: Reset auf vorherigen erfolgreichen Snapshot</li>
         <li>Manifest: <code>/srv/pcloud-archive/manifests/&lt;SNAPSHOT&gt;.json</code></li>
         <li>Index-Cache: <code>/srv/pcloud-temp/pcloud_index_*.json</code></li>
-        <li>Remote (optional): <code>/Backup/rtb_1to1/_snapshots/&lt;SNAPSHOT&gt;/</code></li>
+        <li>Remote (optional): <code>/Backup/rtb_pool/_snapshots/&lt;SNAPSHOT&gt;/</code></li>
       </ul>
 
       <h4>cleanup_orphaned_manifests.sh</h4>
@@ -791,10 +791,10 @@ bash scripts/test_chunked_rtb_snapshot.sh
       <h2 id="workflow">4. Production Workflow</h2>
 
       <h3>4.1 RTB Wrapper Integration</h3>
-      <p>Vollautomatische Backup-Pipeline via <code>rtb_wrapper.sh</code> → <code>wrapper_pcloud_sync_1to1.sh</code>:</p>
+      <p>Vollautomatische Backup-Pipeline via <code>rtb_pool_wrapper.sh</code> → <code>wrapper_pcloud_pool_sync_1to1.sh</code>:</p>
 
       <pre><code class="language-bash">#!/bin/bash
-# /opt/apps/rtb/rtb_wrapper.sh
+# /opt/apps/rtb/rtb_pool_wrapper.sh
 
 # 1. Safety-Gate Check
 safety_gate.sh --strict || exit 2  # RED/YELLOW → ABORT!
@@ -805,7 +805,7 @@ if rsync -ni --delete /srv/nas/ /mnt/backup/rtb_nas/latest/ | grep -qE '^[<>ch*]
   bash rsync_tmbackup.sh /srv/nas /mnt/backup/rtb_nas excludes.txt
   
   # 4. pCloud-Sync triggern (shared lock!)
-  BACKUP_PIPELINE_LOCKED=1 bash /opt/apps/pcloud-tools/main/wrapper_pcloud_sync_1to1.sh
+  BACKUP_PIPELINE_LOCKED=1 bash /opt/apps/pcloud-tools/main/wrapper_pcloud_pool_sync_1to1.sh
 else
   log "[skip] Keine Änderungen → kein Backup nötig"
 fi</code></pre>
@@ -814,7 +814,7 @@ fi</code></pre>
       <p>Orchestriert Manifest-Erstellung, Upload, Verification mit Smart-Mode Auto-Detection und Gap-Backfilling:</p>
 
       <pre><code class="language-bash">#!/bin/bash
-# wrapper_pcloud_sync_1to1.sh
+# wrapper_pcloud_pool_sync_1to1.sh
 
 SNAP=$(readlink -f /mnt/backup/rtb_nas/latest)
 SNAPNAME=$(basename "$SNAP")
@@ -830,7 +830,7 @@ else
   log "[manifest] Smart-Mode: Kein Referenz-Manifest (Full-Mode für ersten Snapshot)"
 fi
 
-python pcloud_json_manifest.py \
+python pcloud_json_pool_manifest.py \
   --root "$SNAP" \
   --out /srv/pcloud-temp/pcloud_mani.${SNAPNAME}.$$.json \
   $ref_arg \
@@ -839,13 +839,13 @@ python pcloud_json_manifest.py \
 # 2. Upload (mit Retry + Parallel Folders + Timeouts!)
 python pcloud_push_json_manifest_to_pcloud.py \
   --manifest /srv/pcloud-temp/pcloud_mani.${SNAPNAME}.$$.json \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --snapshot-mode 1to1 \
   --env-file .env
 
 # 3. Verification
 python pcloud_quick_delta.py \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --env-file .env \
   --json-out /srv/pcloud-temp/delta_verify_${SNAPNAME}.json
 
@@ -860,7 +860,7 @@ rm -f /srv/pcloud-temp/pcloud_mani.${SNAPNAME}.$$.json</code></pre>
 
       <pre><code class="language-bash"># Step 1: Missing Files erkennen
 python pcloud_quick_delta.py \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --env-file .env \
   --json-out /tmp/delta.json
 
@@ -869,7 +869,7 @@ python pcloud_quick_delta.py \
 
 # Step 2: Index reparieren
 python pcloud_repair_index.py \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --env-file .env
 
 # Output:
@@ -879,7 +879,7 @@ python pcloud_repair_index.py \
 # Step 3: Re-upload missing files (resume-aware!)
 python pcloud_push_json_manifest_to_pcloud.py \
   --manifest /srv/pcloud-temp/manifest.json \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --snapshot-mode 1to1 \
   --env-file .env
 
@@ -888,7 +888,7 @@ python pcloud_push_json_manifest_to_pcloud.py \
 
 # Step 4: Final verification
 python pcloud_quick_delta.py \
-  --dest-root /Backup/rtb_1to1 \
+  --dest-root /Backup/rtb_pool \
   --env-file .env
 
 # Output:
@@ -1002,7 +1002,7 @@ grep -E '\[push\]|\[stubs\]|\[folders\]' /var/log/backup/pcloud.log</code></pre>
       </ul>
 
       <h3>Integration in RTB Wrapper</h3>
-      <pre><code class="language-bash"># rtb_wrapper.sh
+      <pre><code class="language-bash"># rtb_pool_wrapper.sh
 SAFETY_GATE_STRICT=1  # Empfohlen: auch YELLOW blockiert!
 
 if [[ "$SAFETY_GATE_STRICT" -eq 1 ]]; then

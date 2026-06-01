@@ -329,7 +329,7 @@
                     </tr>
                     <tr>
                         <td class="time">02:05</td>
-                        <td>pcloud_json_manifest.py</td>
+                        <td>pcloud_json_pool_manifest.py</td>
                         <td>SHA256 je Datei berechnen</td>
                         <td>~10 min</td>
                         <td>🔄 Läuft</td>
@@ -397,7 +397,7 @@
                     end
 
                     subgraph Storage["☁️ pCloud Storage"]
-                        pCloud["📦 /Backup/rtb_1to1/<br/>_snapshots/"]
+                        pCloud["📦 /Backup/rtb_pool/<br/>_snapshots/"]
                         Index["🗂️ content_index.json<br/>(Multi-Ref-Index)"]
                     end
 
@@ -720,9 +720,9 @@
                     end
 
                     subgraph Backup["💾 Backup-Pipeline"]
-                        RtbW["rtb_wrapper.sh<br/>(02:00)"]
+                        RtbW["rtb_pool_wrapper.sh<br/>(02:00)"]
                         SafeG["safety_gate.sh<br/>(aggregiert NAS+OS)"]
-                        pCloudW["wrapper_pcloud_sync_1to1.sh<br/>(02:15)"]
+                        pCloudW["wrapper_pcloud_pool_sync_1to1.sh<br/>(02:15)"]
                     end
 
                     NAS --> EW_NAS
