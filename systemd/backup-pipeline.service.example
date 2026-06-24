@@ -3,6 +3,7 @@
 Description=Backup Pipeline (RTB + pCloud)
 Wants=network-online.target
 After=network-online.target
+OnSuccess=monitoring-reports.service
 
 [Service]
 Type=oneshot
