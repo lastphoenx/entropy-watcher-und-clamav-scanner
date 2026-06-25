@@ -109,6 +109,8 @@ EXCLUDES="*/.git/objects/*,/boot/*,*/av-quarantine/*,*/.Spotlight-V100/*,*/node_
 SCORE_EXCLUDES="*.jpg,*.jpeg,*.png,*.gif,*.mp4,*.mkv,*.avi,*.mp3,*.ogg,*.flac,*.iso,*.sqlite,*.db"
 ```
 
+**NAS-Deployment (PBS/PVE/Paperless/AppleDouble):** siehe [NAS_FALSE_POSITIVES.md](NAS_FALSE_POSITIVES.md) und [.server-config/example/config/common.env.example](../.server-config/example/config/common.env.example).
+
 ---
 
 ## 🧮 Entropie-Engine
@@ -320,6 +322,22 @@ ALERT_ENTROPY_JUMP=0.3  # statt 0.2
 SCORE_EXCLUDES="*.jpg,*.png,*.mp4,*.mkv,*.iso"
 ```
 
+**Lösung 3 (NAS):** Backup-Bereiche und bekannte High-Entropy-Pfade
+
+Wenn PBS-Chunks, PVE-Dumps oder Paperless-Thumbnails das Safety-Gate blockieren:
+
+```bash
+# common.env — Backup komplett überspringen
+EXCLUDES="...,/srv/nas/Backup/**,**/Backup/pbs2/**,**/Backup/pve2/**"
+
+# common.env — messen aber nicht alarmieren
+SCORE_EXCLUDES="...,**/.chunks/**,**/*.blob,**/*.fidx,**/*.webp,**/*.gpg,**/.rnd,**/._*"
+```
+
+Nach Config-Änderung: historische `flagged=1` DB-Einträge bereinigen (siehe [NAS_FALSE_POSITIVES.md](NAS_FALSE_POSITIVES.md)).
+
+**Hinweis:** `EXCLUDES`/`SCORE_EXCLUDES` betreffen nur EntropyWatcher — nicht RTB/rsync. AppleDouble vom Backup ausschließen: `rtb/excludes.txt` mit `**/._*`.
+
 ### "Zu viele False-Positives (ClamAV)"
 
 **Lösung:** CLAMAV_EXCLUDES erweitern
@@ -358,12 +376,14 @@ journalctl -t ew-os-scan --since "1 hour ago"
 - `HEALTH_WINDOW_MIN` zu eng (Timer lief nicht rechtzeitig)
 - `HEALTH_SAFEAGE_MIN` nicht erfüllt (letzter Scan zu neu)
 - Flagged files vorhanden (manuell `tag-exempt` setzen oder Malware entfernen)
+- NAS: Backup-Daten / AppleDouble — siehe [NAS_FALSE_POSITIVES.md](NAS_FALSE_POSITIVES.md)
 
 ---
 
 ## 📚 Siehe auch
 
 - **[README.md](../README.md)** - Hauptdokumentation
+- **[NAS_FALSE_POSITIVES.md](NAS_FALSE_POSITIVES.md)** - PBS/PVE/Paperless/`._*` False-Positives
 - **[HONEYFILE_SETUP.md](HONEYFILE_SETUP.md)** - Intrusion Detection mit Ködern
-- **[config/](../config/)** - ENV-Beispiel-Dateien
+- **[.server-config/example/config/](../.server-config/example/config/)** - anonymisierte ENV-Templates
 - **[.server-config/README.md](../.server-config/README.md)** - Deployment-Referenz
