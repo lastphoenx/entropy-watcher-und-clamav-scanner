@@ -9,9 +9,18 @@ OnSuccess=monitoring-reports.service
 Type=oneshot
 User=<USER>
 WorkingDirectory=/opt/apps/rtb
+# Bei aktivem pCloud-Upload sofort überspringen (kein 2h flock-Warten, kein rsync-OOM)
+Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+Environment=RTB_OOM_SCORE_ADJ=500
 ExecStart=/opt/apps/rtb/rtb_wrapper.sh
 StandardOutput=append:/var/log/backup/rtb_wrapper.log
 StandardError=append:/var/log/backup/rtb_wrapper.log
+
+# RAM-Deckel: rsync -ni über mergerfs frisst GB — lieber rsync killen als ganzen Pi
+# Vollständig: pcloud-tools/systemd/backup-pipeline.service.d/memory-limit.conf.example
+MemoryMax=3G
+MemorySwapMax=512M
+OOMScoreAdjust=500
 
 # Exit-Code 1 = Safety-Gate YELLOW (normaler Skip, kein Fehler)
 # Exit-Code 2 = Safety-Gate RED (echter Alarm → bleibt als Failed sichtbar)
