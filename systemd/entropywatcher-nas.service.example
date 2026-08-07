@@ -3,7 +3,7 @@ Description=EntropyWatcher Scan (Delta)
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=/srv/nas
-
+Conflicts=backup-pipeline.service entropywatcher-nas-av.service entropywatcher-nas-av-weekly.service
 
 [Service]
 SyslogIdentifier=ew-nas-scan
@@ -23,6 +23,6 @@ IOSchedulingPriority=6
 # CPUWeight=10
 
 
-ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py scan --paths "${SCAN_PATHS}"
+ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh /opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py scan --paths "${SCAN_PATHS}"
 
 TimeoutStartSec=2h

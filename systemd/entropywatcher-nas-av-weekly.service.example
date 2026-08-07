@@ -3,6 +3,7 @@ Description=EntropyWatcher ClamAV Scan (WEEKLY full)
 Wants=network-online.target clamav-daemon.service
 After=network-online.target clamav-daemon.service
 RequiresMountsFor=/srv/nas
+Conflicts=entropywatcher-nas-av.service backup-pipeline.service entropywatcher-nas.service
 
 [Service]
 SyslogIdentifier=ew-nas-av-weekly
@@ -27,7 +28,7 @@ EnvironmentFile=-/opt/apps/entropywatcher/config/nas-av-weekly.env
 #Environment=LOG_FILE=/var/log/entropywatcher/entropywatcher-nas-av-weekly.log
 
 # Full-Scan
-ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
+ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh /opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
 TimeoutStartSec=8h
 
 [Install]

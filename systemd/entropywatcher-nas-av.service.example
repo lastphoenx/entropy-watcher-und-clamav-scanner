@@ -3,6 +3,7 @@ Description=EntropyWatcher ClamAV Scan Hot Paths
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=/srv/nas
+Conflicts=entropywatcher-nas-av-weekly.service backup-pipeline.service
 
 [Service]
 SyslogIdentifier=ew-nas-av-hot
@@ -23,8 +24,8 @@ IOSchedulingPriority=6
 # CPUWeight=10
 
 
-# Hot-Pfade scannen:
-ExecStart=/opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
+# Hot-Pfade scannen (gemeinsamer NAS-Lock mit Backup):
+ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh /opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
 
 TimeoutStartSec=4h
 

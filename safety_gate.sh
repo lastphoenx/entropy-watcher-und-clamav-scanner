@@ -90,6 +90,38 @@ log "✓ Honeyfiles: kein verdächtiger Zugriff erkannt"
 
 echo ""
 log "════════════════════════════════════════════════════════════════════"
+log "1b. ACTIVE HEAVY JOBS (Backup / Scan läuft?)"
+log "════════════════════════════════════════════════════════════════════"
+
+NAS_HEAVY_OPS_LIB="${NAS_HEAVY_OPS_LIB:-/opt/apps/rtb/nas_heavy_ops_lock.sh}"
+if [[ -f "$NAS_HEAVY_OPS_LIB" ]]; then
+  # shellcheck source=/dev/null
+  source "$NAS_HEAVY_OPS_LIB"
+  _active_units="$(nas_heavy_ops_active_units 2>/dev/null || true)"
+  if [[ -n "$_active_units" ]]; then
+    log "  ⚠ Aktive schwere systemd-Jobs:"
+    while IFS= read -r _u; do
+      [[ -n "$_u" ]] && log "      → $_u"
+    done <<< "$_active_units"
+    if [[ $OVERALL_STATUS -lt 1 ]]; then
+      OVERALL_STATUS=1
+    fi
+  fi
+  if nas_heavy_ops_is_busy; then
+    log "  ⚠ NAS-Heavy-Ops-Lock belegt (${NAS_HEAVY_OPS_LOCKFILE}) — Backup/Scan aktiv"
+    nas_heavy_ops_holder_hint 2>/dev/null | head -5 >&2 || true
+    if [[ $OVERALL_STATUS -lt 1 ]]; then
+      OVERALL_STATUS=1
+    fi
+  else
+    log "  ✓ Kein aktiver NAS-Heavy-Ops-Lock"
+  fi
+else
+  log "  (nas_heavy_ops_lock.sh nicht gefunden — Active-Job-Check übersprungen)"
+fi
+
+echo ""
+log "════════════════════════════════════════════════════════════════════"
 log "2. ENTROPYWATCHER CHECKS (nas + nas-av)"
 log "════════════════════════════════════════════════════════════════════"
 
