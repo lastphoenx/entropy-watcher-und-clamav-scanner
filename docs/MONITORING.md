@@ -232,7 +232,7 @@ Das [pCloud-Tools Monitoring-Dashboard](https://github.com/lastphoenx/pcloud-too
 - Dashboard URL (nach April 2026 Update): `http://server-ip:8080/pcloud-tools/dashboard/index.html`
 - Diese Dokumentation im Dashboard: `http://server-ip:8080/entropy-watcher-und-clamav-scanner/docs/`
 
-> **💡 April 2026 Update:** Das Dashboard verwendet jetzt absolute Pfade für Multi-Repo Navigation. Der Webserver läuft aus `/opt/apps/` (siehe [DEPLOYMENT_UPDATE_2026.md](https://github.com/lastphoenx/pcloud-tools/blob/main/DEPLOYMENT_UPDATE_2026.md)).
+> **💡 April 2026 Update:** Das Dashboard verwendet jetzt absolute Pfade für Multi-Repo Navigation. Der Webserver läuft aus `/opt/apps/` (siehe [DEPLOYMENT_UPDATE_2026.md](https://github.com/lastphoenx/pcloud-tools/blob/main/docs/DEPLOYMENT_UPDATE_2026.md) — Root-Stub: `DEPLOYMENT_UPDATE_2026.md`).
 
 ### Status-JSON für Monitoring
 

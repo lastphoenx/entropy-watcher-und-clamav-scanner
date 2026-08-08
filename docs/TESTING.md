@@ -463,7 +463,7 @@ sudo bash /opt/apps/rtb/rtb_wrapper.sh --dry-run 2>&1 | head -50
 ### pCloud Sync Test
 
 ```bash
-sudo bash /opt/apps/pcloud-tools/main/wrapper_pcloud_sync_1to1.sh --dry-run
+sudo bash /opt/apps/pcloud-tools/main/legacy/wrapper_pcloud_sync_1to1.sh --dry-run
 ```
 
 **Erwartete Ausgabe:**
