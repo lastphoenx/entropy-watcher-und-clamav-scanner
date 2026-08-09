@@ -2511,9 +2511,8 @@ ExecStart=/opt/apps/rtb/rtb_pool_wrapper.sh
 Environment=SAFETY_GATE_STRICT=0
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
 Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
-MemoryMax=5G
 TimeoutStartSec=4h
-# KEIN NAS_HEAVY_OPS_ALLOW_HOURS — 04/12/20 müssen laufen</code></pre>
+# Deploy: install-backup-pipeline-systemd.sh — kein MemoryMax, kein StandardOutput=append</code></pre>
           </div>
         </div>
 
@@ -2543,7 +2542,7 @@ Unit=backup-pipeline.service</code></pre>
             <button class="copy-btn" data-copy>Copy</button>
           </div>
           <div class="code-block">
-            <pre><code class="language-bash">sudo systemctl daemon-reload
+            <pre><code class="language-bash">sudo /opt/apps/pcloud-tools/main/scripts/install-backup-pipeline-systemd.sh
 
 # Test (RAM stabil, Zeile [RTB Signature] …):
 sudo /opt/apps/rtb/rtb_pool_wrapper.sh --check-only

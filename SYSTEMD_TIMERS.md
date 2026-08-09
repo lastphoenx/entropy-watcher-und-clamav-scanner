@@ -38,19 +38,20 @@
 
 ## backup-pipeline.service (Kernpunkte)
 
+- Kanonische Unit: `pcloud-tools/systemd/backup-pipeline.service.example`
+- Deploy: `sudo /opt/apps/pcloud-tools/main/scripts/install-backup-pipeline-systemd.sh`
 - `ExecStart=/opt/apps/rtb/rtb_pool_wrapper.sh`
-- `WorkingDirectory=/opt/apps/pcloud-tools/main`
-- `MemoryMax=5G` — Schutz beim **echten** rsync-Backup, nicht beim Signature-Check
+- **Kein** `MemoryMax` / **kein** `StandardOutput=append` (Logging nur im Wrapper-Script)
+- `OOMScoreAdjust=500` — bei globalem OOM stirbt der Backup-Job zuerst (kein RAM-Deckel)
 - `TimeoutStartSec=4h`
-- **Kein** `RTB_CHECK_MEMORY_MAX_MB` in der Unit
 
 ---
 
 ## Deploy-Checkliste
 
 ```bash
-# Nach git pull (rtb + entropywatcher):
-sudo systemctl daemon-reload
+# Nach git pull (rtb + pcloud-tools + entropywatcher):
+sudo /opt/apps/pcloud-tools/main/scripts/install-backup-pipeline-systemd.sh
 
 # Test vor backup-timer:
 sudo /opt/apps/rtb/rtb_pool_wrapper.sh --check-only
