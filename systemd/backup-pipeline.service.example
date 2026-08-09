@@ -22,12 +22,10 @@ Environment=RTB_OOM_SCORE_ADJ=500
 Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
 # KEIN NAS_HEAVY_OPS_ALLOW_HOURS — alle 3 Backup-Slots (04/12/20) müssen laufen
 # Trigger-Check: RTB_TRIGGER_MODE=signature (Default in rtb) — kein rsync -ni Vollbaum
+# Logging nur via rtb_pool_wrapper.sh → /var/log/backup/rtb_wrapper.log (kein StandardOutput hier — kein Doppel-Tee)
 
-StandardOutput=append:/var/log/backup/rtb_wrapper.log
-StandardError=append:/var/log/backup/rtb_wrapper.log
-
-MemoryMax=5G
-MemorySwapMax=512M
+MemoryMax=2G
+MemorySwapMax=256M
 OOMScoreAdjust=500
 SuccessExitStatus=1
 
