@@ -3,7 +3,7 @@ Description=EntropyWatcher ClamAV Scan Hot Paths
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=/srv/nas
-Conflicts=entropywatcher-nas-av-weekly.service backup-pipeline.service
+# Kein Conflicts= — Lock + Fail-Fast (kein Kill um 02:22 durch stündlichen Entropy-Scan).
 
 [Service]
 SyslogIdentifier=ew-nas-av-hot
@@ -13,6 +13,8 @@ User=root
 Group=root
 WorkingDirectory=/opt/apps/entropywatcher
 Environment=PYTHONNOUSERSITE=1
+Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
 EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
 EnvironmentFile=-/opt/apps/entropywatcher/config/nas-av.env
 

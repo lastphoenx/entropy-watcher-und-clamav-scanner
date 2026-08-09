@@ -3,7 +3,6 @@ Description=EntropyWatcher ClamAV Scan (WEEKLY full)
 Wants=network-online.target clamav-daemon.service
 After=network-online.target clamav-daemon.service
 RequiresMountsFor=/srv/nas
-Conflicts=entropywatcher-nas-av.service backup-pipeline.service entropywatcher-nas.service
 
 [Service]
 SyslogIdentifier=ew-nas-av-weekly
@@ -13,6 +12,8 @@ User=<USER>
 Group=<GROUP>
 WorkingDirectory=/opt/apps/entropywatcher
 Environment=PYTHONNOUSERSITE=1
+Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6

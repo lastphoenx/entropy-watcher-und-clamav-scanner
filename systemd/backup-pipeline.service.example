@@ -11,6 +11,8 @@ User=<USER>
 WorkingDirectory=/opt/apps/rtb
 # Bei aktivem pCloud-Upload sofort überspringen (kein 2h flock-Warten, kein rsync-OOM)
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+# Schwere Pipeline (RTB + pCloud-Catch-up) nur nachts — tagsüber kein mergerfs-Sturm
+Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
 Environment=RTB_OOM_SCORE_ADJ=500
 ExecStart=/opt/apps/rtb/rtb_wrapper.sh
 StandardOutput=append:/var/log/backup/rtb_wrapper.log
