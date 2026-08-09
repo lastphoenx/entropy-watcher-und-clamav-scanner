@@ -573,8 +573,8 @@
             <strong>Problem:</strong> The script always ran, even when no changes existed.
           </p>
           <p>
-            <strong>Solution:</strong> The <a href="https://github.com/lastphoenx/rtb" target="_blank" style="color: var(--accent);">RTB Wrapper</a> 
-            checks beforehand if a delta exists (via <code>rsync --dry-run</code>). Backups only execute when actual changes are detected.
+            <strong>Solution:</strong> The <a href="https://github.com/lastphoenx/rtb" target="_blank" style="color: var(--accent);">RTB Wrapper</a>
+            uses a <strong>signature trigger</strong> (<code>rtb_trigger_signature.py</code>): per top-level folder it compares file count, bytes, and newest mtime against the last snapshot — without a full-tree <code>rsync -ni</code>. Backups run only when real user-data changes exist.
           </p>
           <p style="margin-top: 0.75rem; padding: 0.6rem 1rem; background: rgba(16,185,129,0.07); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 0.92rem;">
             <strong>Backup Loop Prevention:</strong> Tools like <strong>pCloud Commander</strong> download files into
@@ -2512,8 +2512,16 @@ Environment=SAFETY_GATE_STRICT=0
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
 Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
 TimeoutStartSec=4h
-# Deploy: install-backup-pipeline-systemd.sh — kein MemoryMax, kein StandardOutput=append</code></pre>
+# Deploy: install-backup-pipeline-systemd.sh — kein MemoryMax, kein OOMScoreAdjust, kein StandardOutput=append</code></pre>
           </div>
+        </div>
+
+        <div class="callout" style="margin: 1rem 0; padding: 1rem 1.25rem; background: rgba(59,130,246,0.08); border-left: 4px solid var(--accent); border-radius: 6px;">
+          <strong>RTB architecture (Aug 2026):</strong>
+          <code>rsync_tmbackup.sh</code> stays <strong>vanilla upstream</strong> — no batch forks.
+          Customization lives in <code>rtb_pool_wrapper.sh</code> only (rsync flags without <code>--itemize-changes</code>, signature trigger).
+          Two exclude layers: <code>excludes.txt</code> (never backup) vs. <code>rtb_check_excludes.sh</code>
+          (<code>pcloud-archive</code>/<code>pcloud-temp</code> = ride-along, no solo trigger).
         </div>
 
         <div class="code-wrapper">

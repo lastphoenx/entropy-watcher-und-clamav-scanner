@@ -42,7 +42,7 @@
 - Deploy: `sudo /opt/apps/pcloud-tools/main/scripts/install-backup-pipeline-systemd.sh`
 - `ExecStart=/opt/apps/rtb/rtb_pool_wrapper.sh`
 - **Kein** `MemoryMax` / **kein** `StandardOutput=append` (Logging nur im Wrapper-Script)
-- `OOMScoreAdjust=500` — bei globalem OOM stirbt der Backup-Job zuerst (kein RAM-Deckel)
+- **Kein** `OOMScoreAdjust` — rsync wird bei OOM nicht gezielt bevorzugt getötet (`8c3367c`)
 - `TimeoutStartSec=4h`
 
 ---
