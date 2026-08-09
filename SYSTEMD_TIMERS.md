@@ -61,6 +61,9 @@ sudo systemctl enable --now entropywatcher-nas.timer
 sudo systemctl enable --now entropywatcher-nas-av.timer
 # backup-pipeline.timer erst nach erfolgreichem check-only:
 # sudo systemctl enable --now backup-pipeline.timer
+
+# Nach manueller Wartung (OOM, staged resume, upload-only):
+# sudo /opt/apps/pcloud-tools/main/scripts/restore-pipeline-services.sh
 ```
 
 ---
