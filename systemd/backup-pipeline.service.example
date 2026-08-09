@@ -22,10 +22,12 @@ Environment=RTB_OOM_SCORE_ADJ=500
 Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
 # KEIN NAS_HEAVY_OPS_ALLOW_HOURS — alle 3 Backup-Slots (04/12/20) müssen laufen
 # Trigger-Check: RTB_TRIGGER_MODE=signature (Default in rtb) — kein rsync -ni Vollbaum
-# Logging nur via rtb_pool_wrapper.sh → /var/log/backup/rtb_wrapper.log (kein StandardOutput hier — kein Doppel-Tee)
+# Logging nur via rtb_pool_wrapper.sh → /var/log/backup/rtb_wrapper.log
+# (kein StandardOutput=append — kein Doppel-Tee mit Script-Logging)
+#
+# RAM: Kein MemoryMax in der Haupt-Unit — Backup soll RAM nutzen dürfen (8GB-Pi).
+# Optionaler Notfall-Deckel nur als Drop-in: backup-pipeline.service.d/memory-limit.conf.example
 
-MemoryMax=2G
-MemorySwapMax=256M
 OOMScoreAdjust=500
 SuccessExitStatus=1
 
