@@ -1,13 +1,12 @@
 # /etc/systemd/system/entropywatcher-nas.timer
 [Unit]
-Description=EntropyWatcher NAS scan (4x nightly, low NAS impact)
+Description=EntropyWatcher NAS Delta-Scan (3x täglich, vor Backup-Fenstern)
 
 [Timer]
-# 4× in der Ruhephase 02–06 (nicht stündlich — mergerfs-Schonung)
-OnCalendar=*-*-* 02:20:00
-OnCalendar=*-*-* 03:20:00
-OnCalendar=*-*-* 04:20:00
-OnCalendar=*-*-* 05:20:00
+# ~2h vor backup-pipeline (04 / 12 / 20) — nicht stündlich (mergerfs-Schonung)
+OnCalendar=*-*-* 02:00:00
+OnCalendar=*-*-* 10:00:00
+OnCalendar=*-*-* 18:00:00
 AccuracySec=1m
 RandomizedDelaySec=5min
 Persistent=true

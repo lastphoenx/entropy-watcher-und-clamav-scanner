@@ -3,7 +3,7 @@ Description=EntropyWatcher Scan (Delta)
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=/srv/nas
-# Kein Conflicts= zu Backup/AV — Koordination nur via nas_heavy_ops_lock (busy → skip, kein SIGTERM).
+# Kein Conflicts= — Koordination nur via nas_heavy_ops_lock (busy → skip, kein SIGTERM)
 
 [Service]
 SyslogIdentifier=ew-nas-scan
@@ -16,15 +16,14 @@ EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
 EnvironmentFile=-/opt/apps/entropywatcher/config/nas.env
 Environment=PYTHONNOUSERSITE=1
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
-Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
+# Kein ALLOW_HOURS — Timer steuert 02/10/18 (tagsüber erlaubt)
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6
-# optional (cgroups v2 / Debian 12):
-# IOWeight=50
-# CPUWeight=10
-
 
 ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh /opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py scan --paths "${SCAN_PATHS}"
 
 TimeoutStartSec=2h
+
+[Install]
+WantedBy=multi-user.target

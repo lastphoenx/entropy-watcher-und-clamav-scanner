@@ -1397,85 +1397,83 @@ graph TD
         </div>
 
         <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
-          Zeitplan (am Beispiel NAS)
+          Zeitplan (pi-nas Produktion)
         </h3>
+
+        <div class="section-content" style="margin-bottom: 1rem;">
+          <p>
+            Schwere Jobs teilen sich den <strong>NAS-Lock</strong> (<code>/run/backup_pipeline.lock</code>).
+            Bei belegtem Lock: <code>FAIL_FAST</code> → überspringen, kein Kill. Backup-Trigger nutzt
+            <strong>Signature-Scan</strong> (kein <code>rsync -ni</code> über den ganzen mergerfs-Baum).
+          </p>
+        </div>
 
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
             <thead>
               <tr style="background: #020617;">
                 <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Zeit</th>
-                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Timer-Name</th>
-                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Skript / Service</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Timer</th>
                 <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Aktion</th>
-                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Dauer</th>
-                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Status (Beispiel)</th>
+                <th style="padding: 0.6rem 0.8rem; text-align: left; color: #e2e8f0;">Warum</th>
               </tr>
             </thead>
             <tbody>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">00:00</td>
-                <td style="padding: 0.5rem 0.8rem;">rtb_nas.timer</td>
-                <td style="padding: 0.5rem 0.8rem;"><code>rsync_tmbackup.sh</code></td>
-                <td style="padding: 0.5rem 0.8rem;">Snapshot-Erstellung mit Hardlinks</td>
-                <td style="padding: 0.5rem 0.8rem;">~60 min</td>
-                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">23:00 ±10m</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher-nas-av</code></td>
+                <td style="padding: 0.5rem 0.8rem;">ClamAV Hot Paths</td>
+                <td style="padding: 0.5rem 0.8rem;">Abends, getrennt von Entropy 02:00</td>
               </tr>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">01:00</td>
-                <td style="padding: 0.5rem 0.8rem;">—</td>
-                <td style="padding: 0.5rem 0.8rem;">RTB Snapshot fertig</td>
-                <td style="padding: 0.5rem 0.8rem;">Snapshot bereit für Upload</td>
-                <td style="padding: 0.5rem 0.8rem;">—</td>
-                <td style="padding: 0.5rem 0.8rem; color: #22c55e;">OK</td>
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:00 ±5m</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher-nas</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Entropy Delta-Scan</td>
+                <td style="padding: 0.5rem 0.8rem;">~2h vor Backup 04:00</td>
               </tr>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">01:00</td>
-                <td style="padding: 0.5rem 0.8rem;">entropywatcher_nas.timer</td>
-                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher.py</code></td>
-                <td style="padding: 0.5rem 0.8rem;">Delta-Scan /srv/nas</td>
-                <td style="padding: 0.5rem 0.8rem;">~20 min</td>
-                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">So 03:00</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher-nas-av-weekly</code></td>
+                <td style="padding: 0.5rem 0.8rem;">ClamAV Full</td>
+                <td style="padding: 0.5rem 0.8rem;">Wöchentlich; <code>ALLOW_HOURS=02-06</code> nur hier</td>
               </tr>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:00</td>
-                <td style="padding: 0.5rem 0.8rem;">safety_gate.timer</td>
-                <td style="padding: 0.5rem 0.8rem;"><code>safety_gate.sh</code></td>
-                <td style="padding: 0.5rem 0.8rem;">Status prüfen (GREEN/RED?)</td>
-                <td style="padding: 0.5rem 0.8rem;">~5 sec</td>
-                <td style="padding: 0.5rem 0.8rem; color: #22c55e;">OK</td>
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8; font-weight: 600;">04:00</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>backup-pipeline</code></td>
+                <td style="padding: 0.5rem 0.8rem;">RTB Snapshot + pCloud POOL</td>
+                <td style="padding: 0.5rem 0.8rem;">Backup 1/3 — Signature-Trigger, dann rsync_tmbackup</td>
               </tr>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:05</td>
-                <td style="padding: 0.5rem 0.8rem;">pcloud_manifest.timer</td>
-                <td style="padding: 0.5rem 0.8rem;"><code>pcloud_json_pool_manifest.py</code></td>
-                <td style="padding: 0.5rem 0.8rem;">SHA256 je Datei berechnen</td>
-                <td style="padding: 0.5rem 0.8rem;">~10 min</td>
-                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">10:00 ±5m</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher-nas</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Entropy Delta</td>
+                <td style="padding: 0.5rem 0.8rem;">~2h vor Backup 12:00</td>
               </tr>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">02:15</td>
-                <td style="padding: 0.5rem 0.8rem;">pcloud_push.timer</td>
-                <td style="padding: 0.5rem 0.8rem;"><code>pcloud_push_json_manifest...</code></td>
-                <td style="padding: 0.5rem 0.8rem;">Upload nur NEW/CHANGED</td>
-                <td style="padding: 0.5rem 0.8rem;">~30–60 min</td>
-                <td style="padding: 0.5rem 0.8rem; color: #38bdf8;">Läuft</td>
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8; font-weight: 600;">12:00</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>backup-pipeline</code></td>
+                <td style="padding: 0.5rem 0.8rem;">RTB + pCloud</td>
+                <td style="padding: 0.5rem 0.8rem;">Backup 2/3</td>
               </tr>
               <tr style="background: #020617;">
-                <td style="padding: 0.5rem 0.8rem; color: #facc15;">03:00</td>
-                <td style="padding: 0.5rem 0.8rem;">backup_pipeline.timer</td>
-                <td style="padding: 0.5rem 0.8rem;">Backup-Pipeline</td>
-                <td style="padding: 0.5rem 0.8rem;">Fertig ✅</td>
-                <td style="padding: 0.5rem 0.8rem;">—</td>
-                <td style="padding: 0.5rem 0.8rem; color: #22c55e;">COMPLETE</td>
+                <td style="padding: 0.5rem 0.8rem; color: #facc15;">18:00 ±5m</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>entropywatcher-nas</code></td>
+                <td style="padding: 0.5rem 0.8rem;">Entropy Delta</td>
+                <td style="padding: 0.5rem 0.8rem;">~2h vor Backup 20:00</td>
+              </tr>
+              <tr style="background: #020617;">
+                <td style="padding: 0.5rem 0.8rem; color: #38bdf8; font-weight: 600;">20:00</td>
+                <td style="padding: 0.5rem 0.8rem;"><code>backup-pipeline</code></td>
+                <td style="padding: 0.5rem 0.8rem;">RTB + pCloud</td>
+                <td style="padding: 0.5rem 0.8rem;">Backup 3/3</td>
               </tr>
             </tbody>
           </table>
 
           <div style="margin-top: 1rem; padding: 0.9rem 1rem; border-radius: 6px; background: #022c22; color: #bbf7d0; font-size: 0.85rem;">
-            <strong>Ergebnis:</strong> Durch die Kombination aus lokalen RTB-Snapshots (rsync&nbsp;--hard-links)
-            und Manifest-basierter Deduplizierung in pCloud werden in der Cloud sehr ähnliche
-            Einsparungen erzielt wie lokal – es wird primär nur NEW/CHANGED hochgeladen.
+            <strong>Ergebnis:</strong> Drei Backups täglich bleiben. Der Trigger-Check frisst keinen RAM mehr
+            (<code>rtb_trigger_signature.py</code>). Schwere Scans koordinieren sich über den NAS-Lock statt
+            <code>Conflicts=</code> (kein SIGTERM um 02:22).
           </div>
         </div>
       </section>
@@ -1560,9 +1558,6 @@ CONTENT_INDEX_PATH=/Backup/rtb_pool/_index/content_index.json</code></pre>
             <li>Restrict this account in the pCloud web UI to the backup folder (for example <code>/Backup/rtb_pool</code>).</li>
             <li>Store the received token in <code>PCLOUD_TOKEN</code> inside <code>pcloud.env</code> and keep the file readable only by the backup user (for example <code>chmod 600</code>).</li>
           </ol>
-        </div>
-  scan</code></pre>
-          </div>
         </div>
 
         <div class="code-wrapper">
@@ -2336,8 +2331,8 @@ MAIL_STARTTLS=1  # 1=TLS, 0=Plain</code></pre>
             <tr>
               <td><code>entropywatcher-nas</code></td>
               <td>Entropy</td>
-              <td>Hourly</td>
-              <td>*:20</td>
+              <td>3× daily</td>
+              <td>02:00, 10:00, 18:00</td>
               <td>
                 <code>entropywatcher-nas.service</code><br>
                 <code>entropywatcher-nas.timer</code>
@@ -2346,8 +2341,8 @@ MAIL_STARTTLS=1  # 1=TLS, 0=Plain</code></pre>
             <tr>
               <td><code>entropywatcher-nas-av</code></td>
               <td>ClamAV</td>
-              <td>Daily (Mon-Sat)</td>
-              <td>02:00</td>
+              <td>Daily</td>
+              <td>23:00</td>
               <td>
                 <code>entropywatcher-nas-av.service</code><br>
                 <code>entropywatcher-nas-av.timer</code>
@@ -2418,7 +2413,7 @@ MAIL_STARTTLS=1  # 1=TLS, 0=Plain</code></pre>
 
         <!-- NAS Entropy Service -->
         <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
-          NAS Entropy Scan (Hourly)
+          NAS Entropy Scan (3× täglich)
         </h3>
 
         <div class="code-wrapper">
@@ -2428,22 +2423,19 @@ MAIL_STARTTLS=1  # 1=TLS, 0=Plain</code></pre>
           </div>
           <div class="code-block">
             <pre><code class="language-ini">[Unit]
-Description=EntropyWatcher NAS Entropy Scan (Hourly)
-After=network.target mariadb.service
+Description=EntropyWatcher Scan (Delta)
+RequiresMountsFor=/srv/nas
 
 [Service]
 Type=oneshot
-User=entropyuser
-WorkingDirectory=/opt/apps/entropywatcher
-EnvironmentFile=/opt/apps/entropywatcher/config/common.env
-EnvironmentFile=/opt/apps/entropywatcher/config/nas.env
-ExecStart=/opt/apps/entropywatcher/venv/bin/python \
-  /opt/apps/entropywatcher/main/entropywatcher.py \
-  --env /opt/apps/entropywatcher/config/common.env \
-  --env /opt/apps/entropywatcher/config/nas.env \
-  scan --paths "${SCAN_PATHS}"
-StandardOutput=journal
-StandardError=journal</code></pre>
+User=root
+Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
+EnvironmentFile=-/opt/apps/entropywatcher/config/nas.env
+ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh \
+  /opt/apps/entropywatcher/venv/bin/python \
+  /opt/apps/entropywatcher/main/entropywatcher.py scan --paths "${SCAN_PATHS}"
+TimeoutStartSec=2h</code></pre>
           </div>
         </div>
 
@@ -2453,29 +2445,19 @@ StandardError=journal</code></pre>
             <button class="copy-btn" data-copy>Copy</button>
           </div>
           <div class="code-block">
-            <pre><code class="language-ini">[Unit]
-Description=Run EntropyWatcher NAS scan hourly
-
-[Timer]
-# First run 5 min after boot
-OnBootSec=5min
-# Then every hour at :20
-OnCalendar=*-*-* *:20:00
-AccuracySec=1m
-# Catch up on missed runs
-Persistent=true
-# Random delay to avoid load spikes
+            <pre><code class="language-ini">[Timer]
+OnCalendar=*-*-* 02:00:00
+OnCalendar=*-*-* 10:00:00
+OnCalendar=*-*-* 18:00:00
 RandomizedDelaySec=5min
-Unit=entropywatcher-nas.service
-
-[Install]
-WantedBy=timers.target</code></pre>
+Persistent=true
+Unit=entropywatcher-nas.service</code></pre>
           </div>
         </div>
 
         <!-- NAS AV Service -->
         <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
-          NAS AV Scan (Daily)
+          NAS AV Scan (Daily 23:00)
         </h3>
 
         <div class="code-wrapper">
@@ -2484,24 +2466,15 @@ WantedBy=timers.target</code></pre>
             <button class="copy-btn" data-copy>Copy</button>
           </div>
           <div class="code-block">
-            <pre><code class="language-ini">[Unit]
-Description=EntropyWatcher NAS AV Scan (Daily)
-After=network.target mariadb.service clamav-daemon.service
-
-[Service]
+            <pre><code class="language-ini">[Service]
 Type=oneshot
-User=entropyuser
-WorkingDirectory=/opt/apps/entropywatcher
-EnvironmentFile=/opt/apps/entropywatcher/config/common.env
-EnvironmentFile=/opt/apps/entropywatcher/config/nas-av.env
-ExecStart=/opt/apps/entropywatcher/venv/bin/python \
-  /opt/apps/entropywatcher/main/entropywatcher.py \
-  --env /opt/apps/entropywatcher/config/common.env \
-  --env /opt/apps/entropywatcher/config/nas-av.env \
-  av-scan --paths "${SCAN_PATHS}"
-StandardOutput=journal
-StandardError=journal
-TimeoutStartSec=3600</code></pre>
+User=root
+Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+EnvironmentFile=-/opt/apps/entropywatcher/config/nas-av.env
+ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh \
+  /opt/apps/entropywatcher/venv/bin/python \
+  /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
+TimeoutStartSec=4h</code></pre>
           </div>
         </div>
 
@@ -2511,18 +2484,51 @@ TimeoutStartSec=3600</code></pre>
             <button class="copy-btn" data-copy>Copy</button>
           </div>
           <div class="code-block">
-            <pre><code class="language-ini">[Unit]
-Description=EntropyWatcher NAS AV daily (Mon-Sat)
-
-[Timer]
-OnCalendar=Mon..Sat 02:00
-RandomizedDelaySec=10m
-AccuracySec=1m
+            <pre><code class="language-ini">[Timer]
+OnCalendar=*-*-* 23:00:00
+RandomizedDelaySec=10min
 Persistent=true
-Unit=entropywatcher-nas-av.service
+Unit=entropywatcher-nas-av.service</code></pre>
+          </div>
+        </div>
 
-[Install]
-WantedBy=timers.target</code></pre>
+        <!-- Backup Pipeline -->
+        <h3 style="font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--text);">
+          Backup Pipeline (3× täglich)
+        </h3>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/etc/systemd/system/backup-pipeline.service</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/apps/pcloud-tools/main
+ExecStart=/opt/apps/rtb/rtb_pool_wrapper.sh
+Environment=SAFETY_GATE_STRICT=0
+Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
+MemoryMax=5G
+TimeoutStartSec=4h
+# KEIN NAS_HEAVY_OPS_ALLOW_HOURS — 04/12/20 müssen laufen</code></pre>
+          </div>
+        </div>
+
+        <div class="code-wrapper">
+          <div class="code-header">
+            <span class="code-label">/etc/systemd/system/backup-pipeline.timer</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <div class="code-block">
+            <pre><code class="language-ini">[Timer]
+OnCalendar=*-*-* 04:00:00
+OnCalendar=*-*-* 12:00:00
+OnCalendar=*-*-* 20:00:00
+Persistent=true
+Unit=backup-pipeline.service</code></pre>
           </div>
         </div>
 
@@ -2537,21 +2543,19 @@ WantedBy=timers.target</code></pre>
             <button class="copy-btn" data-copy>Copy</button>
           </div>
           <div class="code-block">
-            <pre><code class="language-bash"># Reload systemd configuration
-sudo systemctl daemon-reload
+            <pre><code class="language-bash">sudo systemctl daemon-reload
 
-# Enable and start timers
+# Test (RAM stabil, Zeile [RTB Signature] …):
+sudo /opt/apps/rtb/rtb_pool_wrapper.sh --check-only
+
+# Entropy/AV Timer
 sudo systemctl enable --now entropywatcher-nas.timer
 sudo systemctl enable --now entropywatcher-nas-av.timer
-sudo systemctl enable --now backup-pipeline.timer
 
-# Check timer status
-systemctl list-timers
+# Backup erst nach erfolgreichem check-only:
+# sudo systemctl enable --now backup-pipeline.timer
 
-# Manual test run
-sudo systemctl start entropywatcher-nas.service
-
-# View logs
+systemctl list-timers | grep -E 'backup|entropywatcher-nas'
 journalctl -u entropywatcher-nas -f</code></pre>
           </div>
         </div>

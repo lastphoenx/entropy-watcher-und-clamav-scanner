@@ -1,16 +1,15 @@
 # /etc/systemd/system/entropywatcher-nas-av.timer
 [Unit]
-Description=EntropyWatcher NAS AV daily (Mon..Sat)
+Description=EntropyWatcher NAS AV daily (Hot Paths)
 
 [Timer]
-OnCalendar=Mon..Sun 02:00
-RandomizedDelaySec=10m
+# Abends vor Entropy 02:00 — keine Kollision mit 02/10/18 Entropy oder 04:00 Backup
+OnCalendar=*-*-* 23:00:00
+RandomizedDelaySec=10min
 AccuracySec=1m
 Persistent=true
 
-# wichtig, Verbindung zum zu startenden Service
 Unit=entropywatcher-nas-av.service
 
 [Install]
 WantedBy=timers.target
-

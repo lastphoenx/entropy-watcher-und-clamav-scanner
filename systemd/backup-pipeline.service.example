@@ -1,36 +1,42 @@
 # /etc/systemd/system/backup-pipeline.service
 [Unit]
-Description=Backup Pipeline (RTB + pCloud)
+Description=Backup Pipeline (RTB + pCloud POOL)
 Wants=network-online.target
 After=network-online.target
+RequiresMountsFor=/srv/nas
 OnSuccess=monitoring-reports.service
 
 [Service]
 Type=oneshot
-User=<USER>
-WorkingDirectory=/opt/apps/rtb
-# Bei aktivem pCloud-Upload sofort überspringen (kein 2h flock-Warten, kein rsync-OOM)
+User=root
+Group=root
+WorkingDirectory=/opt/apps/pcloud-tools/main
+
+ExecStartPre=/bin/mkdir -p /var/log/backup
+ExecStart=/opt/apps/rtb/rtb_pool_wrapper.sh
+
+# Safety-Gate: 0 = auch bei YELLOW starten (pi-nas Produktion)
+Environment=SAFETY_GATE_STRICT=0
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
-# Schwere Pipeline (RTB + pCloud-Catch-up) nur nachts — tagsüber kein mergerfs-Sturm
-Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
 Environment=RTB_OOM_SCORE_ADJ=500
-ExecStart=/opt/apps/rtb/rtb_wrapper.sh
+Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
+# KEIN NAS_HEAVY_OPS_ALLOW_HOURS — alle 3 Backup-Slots (04/12/20) müssen laufen
+# Trigger-Check: RTB_TRIGGER_MODE=signature (Default in rtb) — kein rsync -ni Vollbaum
+
 StandardOutput=append:/var/log/backup/rtb_wrapper.log
 StandardError=append:/var/log/backup/rtb_wrapper.log
 
-# RAM-Deckel: rsync -ni über mergerfs frisst GB — lieber rsync killen als ganzen Pi
-# Vollständig: pcloud-tools/systemd/backup-pipeline.service.d/memory-limit.conf.example
-MemoryMax=3G
+MemoryMax=5G
 MemorySwapMax=512M
 OOMScoreAdjust=500
-
-# Exit-Code 1 = Safety-Gate YELLOW (normaler Skip, kein Fehler)
-# Exit-Code 2 = Safety-Gate RED (echter Alarm → bleibt als Failed sichtbar)
 SuccessExitStatus=1
 
-# Resource limits (schonend für System)
 Nice=10
 IOSchedulingClass=idle
 CPUWeight=100
 IOWeight=50
 
+TimeoutStartSec=4h
+
+[Install]
+WantedBy=multi-user.target

@@ -8,28 +8,22 @@ RequiresMountsFor=/srv/nas
 SyslogIdentifier=ew-nas-av-weekly
 
 Type=oneshot
-User=<USER>
-Group=<GROUP>
+User=root
+Group=root
 WorkingDirectory=/opt/apps/entropywatcher
 Environment=PYTHONNOUSERSITE=1
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
+# Nur Weekly: ALLOW_HOURS fängt Persistent-Nachholen tagsüber ab (Timer So 03:00)
 Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
-Nice=10
-IOSchedulingClass=best-effort
-IOSchedulingPriority=6
-# optional (cgroups v2 / Debian 12):
-# IOWeight=50
-# CPUWeight=10
-
-# lade deine Projekt-.env zusätzlich zur python-dotenv (praktisch für Mail/Timerläufe)
 EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
 EnvironmentFile=-/opt/apps/entropywatcher/config/nas-av-weekly.env
 
-#Environment=LOG_LEVEL=INFO
-#Environment=LOG_FILE=/var/log/entropywatcher/entropywatcher-nas-av-weekly.log
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
 
-# Full-Scan
 ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh /opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
+
 TimeoutStartSec=8h
 
 [Install]

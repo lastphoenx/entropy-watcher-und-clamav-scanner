@@ -3,7 +3,7 @@ Description=EntropyWatcher ClamAV Scan Hot Paths
 Wants=network-online.target
 After=network-online.target
 RequiresMountsFor=/srv/nas
-# Kein Conflicts= — Lock + Fail-Fast (kein Kill um 02:22 durch stündlichen Entropy-Scan).
+# Kein Conflicts= — Lock + Fail-Fast
 
 [Service]
 SyslogIdentifier=ew-nas-av-hot
@@ -14,19 +14,14 @@ Group=root
 WorkingDirectory=/opt/apps/entropywatcher
 Environment=PYTHONNOUSERSITE=1
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
-Environment=NAS_HEAVY_OPS_ALLOW_HOURS=02-06
+# Kein ALLOW_HOURS — Timer 23:00 steuert; ALLOW_HOURS=02-06 würde 23:00-Scan blockieren
 EnvironmentFile=-/opt/apps/entropywatcher/config/common.env
 EnvironmentFile=-/opt/apps/entropywatcher/config/nas-av.env
 
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6
-# optional (cgroups v2 / Debian 12):
-# IOWeight=50
-# CPUWeight=10
 
-
-# Hot-Pfade scannen (gemeinsamer NAS-Lock mit Backup):
 ExecStart=/opt/apps/rtb/with_nas_heavy_ops_lock.sh /opt/apps/entropywatcher/venv/bin/python /opt/apps/entropywatcher/main/entropywatcher.py av-scan --paths ${SCAN_PATHS}
 
 TimeoutStartSec=4h
