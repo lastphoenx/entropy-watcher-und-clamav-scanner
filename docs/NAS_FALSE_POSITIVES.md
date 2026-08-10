@@ -39,6 +39,7 @@ Häufiges Szenario auf einem NAS mit Proxmox-Backup-Server (PBS), PVE-Dumps, Pap
 | `EXCLUDES` / `SCORE_EXCLUDES` in `common.env` | Ja | Ja (nur EW ignoriert/alarmiert nicht) |
 | `**/._*`, `__pycache__/`, … in `rtb/excludes.txt` | Ja | Nein (nicht gesichert) |
 | `/pcloud-archive/`, `/pcloud-temp/` nur in Check-Exclude | Ja (wenn anderes Delta Backup startet) | Mit im Snapshot; triggern allein nicht |
+| `/Backup/pbs2/`, `/Backup/pve2/` nur in Check-Exclude | Ja (wenn Config-/NAS-Delta Backup startet) | Mit im Snapshot; triggern allein nicht |
 
 ---
 
@@ -94,7 +95,7 @@ venv/
 
 Reduziert Pool/pCloud-Größe und vermeidet Backup-Trigger durch `.pyc`-Churn. **Kein Ersatz** für serverseitige EW-Regeln — beide Schichten ergänzen sich.
 
-Pipeline-Pfade (`pcloud-archive/`, `pcloud-temp/`) stehen **nicht** in `excludes.txt` — sie triggern nur im Delta-Check nicht (`rtb_check_excludes.sh`). Siehe `rtb/README.md` § Excludes.
+Pipeline-Pfade (`pcloud-archive/`, `pcloud-temp/`) und replizierte Stores (`Backup/pbs2/`, `Backup/pve2/`) stehen **nicht** in `excludes.txt` — sie triggern nur im Delta-Check nicht (`rtb_check_excludes.sh`). Siehe `rtb/README.md` § Excludes.
 
 ---
 
