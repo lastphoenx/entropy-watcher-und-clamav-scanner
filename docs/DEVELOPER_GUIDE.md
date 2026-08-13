@@ -285,6 +285,8 @@ echo $INVOCATION_ID  # abc123... (unverändert!)
 
 Der Rest der Monitoring-Chain (aggregate_status.sh, andere Scripts) behält den systemd-Kontext.
 
+**Dashboard-Timer (pcloud-tools, seit Aug 2026):** `monitoring-status-quick.timer` (5 min, ohne RTB `--check-only`) + `monitoring-status-update.timer` (15 min full, nach Backup). Live Safety-Gate wird bei jedem Aggregate-Lauf neu abgefragt; Header-Datum im Dashboard springt typisch alle 5 min.
+
 ---
 
 ### Debugging-Tipps

@@ -326,11 +326,11 @@
                     alt Bootstrap (Remote leer)
                         pCloudW->>pCloudW: 🔄 Backfill alle Snapshots<br/>(alt → neu)
                     else Normalfall
-                        pCloudW->>pCloudW: Nur /latest hochladen?
-                        pCloudW->>pCloudW: Generate Manifest (SHA256)
-                        pCloudW->>pCloud: Push mit Deduplication
-                        pCloud->>pCloud: content_index.json prüfen
-                        pCloud->>pCloud: Nur NEW/CHANGED ⬆️
+                        pCloudW->>pCloudW: Catch-up: fehlende Snaps (max PCLOUD_CATCHUP_MAX_PER_RUN)
+                        pCloudW->>pCloudW: Turbo-Delta oder Full-Pool
+                        pCloudW->>pCloud: Push (Stubs + Pool)
+                        pCloudW->>pCloudW: Integrity-Gate (pool_verify_backup, ~20–60s)
+                        pCloudW->>pCloud: .upload_complete + content_index (chunked upload)
                         pCloud->>pCloudW: ✓ Done
                     end
 
@@ -582,10 +582,11 @@ fi<br>
 <strong>02:05:01</strong> – wrapper_pcloud_pool_sync_1to1.sh STARTS (automatisch)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pCloud Preflight: OK?<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Safety-delay 120s (warte nach RTB)<br>
-<strong>02:07:00</strong> – Manifest generieren (SHA256)<br>
-<strong>02:10:00</strong> – Push zu pCloud (nur NEW/CHANGED)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;content_index.json aktualisieren<br>
-<strong>02:15:00</strong> – pCloud-Sync fertig ✓<br>
+<strong>02:07:00</strong> – Manifest (Smart-Ref) + Turbo-Delta / Scout<br>
+<strong>02:10:00</strong> – Push zu pCloud (Pool + Stubs)<br>
+<strong>02:22:00</strong> – Integrity-Gate OK (~30s) → .upload_complete<br>
+<strong>02:24:00</strong> – content_index.json (lokal + chunked Upload ~90s)<br>
+<strong>02:25:00</strong> – pCloud-Sync fertig ✓<br>
 <br>
 <strong>02:15:01</strong> – Lock RELEASED (/run/backup_pipeline.lock)<br>
 <strong>02:15:02</strong> – rtb_pool_wrapper.sh EXIT 0 (SUCCESS)<br>

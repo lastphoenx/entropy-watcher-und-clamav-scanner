@@ -1376,7 +1376,7 @@ graph TD
             <!-- Step 16: Verify integrity -->
             <rect x="910" y="1270" width="140" height="50" fill="#0f172a" stroke="#10b981" stroke-width="2" rx="4"/>
             <text x="980" y="1292" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">Verify Integrity</text>
-            <text x="980" y="1308" text-anchor="middle" fill="#94a3b8" font-size="9">pcloud_integrity_check.py</text>
+            <text x="980" y="1308" text-anchor="middle" fill="#94a3b8" font-size="9">pool_verify_backup (Gate)</text>
 
             <line x1="1050" y1="1295" x2="1100" y2="1295" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-green)"/>
             <text x="1075" y="1290" text-anchor="middle" fill="#10b981" font-size="10">verify SHA256</text>
@@ -2638,23 +2638,23 @@ journalctl -u entropywatcher-nas -f</code></pre>
               <td>✅ Yes</td>
             </tr>
             <tr>
-              <td><code>pcloud_push_json_manifest_to_pcloud.py</code></td>
-              <td>Intelligent upload with deduplication (stubs vs full files)</td>
+              <td><code>pcloud_push_json_pool_manifest_to_pcloud.py</code></td>
+              <td>Pool upload (Turbo-Delta, stubs, integrity-gate, index)</td>
               <td>✅ Yes</td>
             </tr>
             <tr>
-              <td><code>pcloud_restore.py</code></td>
-              <td>Download snapshots from pCloud (flat or object-store mode)</td>
+              <td><code>scripts/utilities/pool_verify_backup.py</code></td>
+              <td>Post-upload integrity gate (subtree listfolder, subprocess)</td>
+              <td>✅ Yes (im Push-Skript)</td>
+            </tr>
+            <tr>
+              <td><code>scripts/utilities/pool_restore.py</code></td>
+              <td>Restore from pool stubs + index</td>
               <td>Optional</td>
             </tr>
             <tr>
-              <td><code>pcloud_integrity_check.py</code></td>
-              <td>Verify SHA256 checksums post-upload</td>
-              <td>Recommended</td>
-            </tr>
-            <tr>
               <td><code>wrapper_pcloud_pool_sync_1to1.sh</code></td>
-              <td>Complete backup wrapper (RTB → manifest → safety gate → upload)</td>
+              <td>Complete backup wrapper (catch-up, RTB sync → pool push)</td>
               <td>✅ Yes</td>
             </tr>
           </tbody>
@@ -2740,27 +2740,14 @@ CONTENT_INDEX_PATH=/Backup/rtb_pool/_index/content_index.json</code></pre>
             <pre><code class="language-bash">#!/bin/bash
 set -euo pipefail
 
-# 1. Create RTB snapshot
-/opt/apps/rsync-time-backup/rsync_tmbackup.sh /srv/nas /mnt/backup/rtb_nas
+# Produktion: ein Service — RTB + pCloud Pool (wrapper_pcloud_pool_sync_1to1.sh)
+# 1. RTB Snapshot (rtb_pool_wrapper.sh via backup-pipeline.timer 04/12/20)
+# 2. pCloud Pool-Sync: Manifest → Turbo-Delta → Integrity-Gate → Index
+/opt/apps/rtb/rtb_pool_wrapper.sh
 
-# 2. Generate manifest with SHA256 hashes
-python3 /opt/apps/pcloud-tools/pcloud_json_pool_manifest.py \
-  --snapshot /mnt/backup/rtb_nas/latest \
-  --output /tmp/manifest.json
-
-# 3. Safety Gate check (abort if RED)
-/opt/apps/entropywatcher/safety_gate.sh nas || exit 1
-
-# 4. Upload to pCloud with deduplication (reads /opt/apps/pcloud-tools/config/pcloud.env)
-python3 /opt/apps/pcloud-tools/pcloud_push_json_manifest_to_pcloud.py \
-  --manifest /tmp/manifest.json \
-  --object-store
-
-# 5. Verify integrity
-python3 /opt/apps/pcloud-tools/pcloud_integrity_check.py \
-  --manifest /tmp/manifest.json
-
-echo "Backup completed successfully"</code></pre>
+# Integrity-Gate (automatisch im Push, nicht separater Schritt):
+#   pool_verify_backup.py — Subprozess, subtree listfolder (~20–60s)
+# Catch-up: PCLOUD_CATCHUP_MAX_PER_RUN=1 (Default) — max. 1 fehlender Snap pro Lauf</code></pre>
           </div>
         </div>
       </section>
