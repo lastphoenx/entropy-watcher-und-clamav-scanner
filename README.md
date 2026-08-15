@@ -67,15 +67,16 @@ Dieses Projekt ist Teil einer mehrstufigen Backup-Pipeline:
 | Repository | Funktion |
 |------------|----------|
 | **[entropy-watcher-und-clamav-scanner](https://github.com/lastphoenx/entropy-watcher-und-clamav-scanner)** (hier) | Pre-Backup Security Gate |
-| **[rtb](https://github.com/lastphoenx/rtb)** | Delta-Detection für Rsync Time Backup |
-| **[pcloud-tools](https://github.com/lastphoenx/pcloud-tools)** | Deduplizierte Cloud-Backups |
-| **[rsync-time-backup](https://github.com/laurent22/rsync-time-backup)** (extern) | Hardlink-basierte Snapshots |
+| **[rtb](https://github.com/lastphoenx/rtb)** | `rtb_pool_wrapper.sh`, staged RTB, Signature-Trigger |
+| **[pcloud-tools](https://github.com/lastphoenx/pcloud-tools)** | Pool-Mode Cloud-Backups (SHA256-Pool + Stubs) |
+| **[rsync-time-backup](https://github.com/laurent22/rsync-time-backup)** (extern) | Hardlink-Snapshots (via `rtb_staged_backup`) |
 
-**Pipeline-Ablauf:**
+**Pipeline-Ablauf (pi-nas Produktion):**
 ```
-EntropyWatcher + ClamAV → RTB Wrapper → rsync-time-backup → pCloud-Tools
-    (Safety Gate)         (Delta Check)   (Local Snapshots)   (Cloud Sync)
+EntropyWatcher + ClamAV → rtb_pool_wrapper.sh → rtb_staged_backup → pCloud Pool-Sync
+    (Safety Gate)         (NAS-Lock, Trigger)    (lokale Snapshots)   (Turbo-Delta / Pool)
 ```
+Timer `backup-pipeline`: 04:00 / 12:00 / 20:00 · `TimeoutStartSec=12h` · NAS-Lock mit RTB/pCloud.
 
 **Mehr Details:** [docs/BACKSTORY.md](docs/BACKSTORY.md) - Entstehungsgeschichte & Zusammenspiel
 
