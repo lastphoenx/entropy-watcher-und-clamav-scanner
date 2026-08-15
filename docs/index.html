@@ -2512,7 +2512,8 @@ Environment=SAFETY_GATE_STRICT=0
 Environment=NAS_HEAVY_OPS_FAIL_FAST=1
 Environment=PCLOUD_MAIN_DIR=/opt/apps/pcloud-tools/main
 Environment=RTB_STAGED=1
-TimeoutStartSec=4h
+TimeoutStartSec=12h
+# Seit 15.08.2026 (war 4h): Catch-up + große Deltas + C1-Import können &gt;4h dauern
 # Deploy: install-backup-pipeline-systemd.sh — kein MemoryMax, kein OOMScoreAdjust, kein StandardOutput=append</code></pre>
           </div>
         </div>
