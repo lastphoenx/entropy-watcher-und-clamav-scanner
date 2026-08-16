@@ -216,13 +216,16 @@ MIT License - siehe [LICENSE](LICENSE) File.
 
 **Entropie-Flags werden gesetzt bei:**
 - **Absolut:** `last_entropy >= ALERT_ENTROPY_ABS` (z.B. 7.8)
-- **Sprung:** `last_entropy - prev_entropy >= ALERT_ENTROPY_JUMP`
+- **Sprung:** `last_entropy - start_entropy >= ALERT_ENTROPY_JUMP` (Baseline, nicht prev)
 
 **Exempt-Status:** Dateien mit `score_exempt=1` werden gemessen, aber nicht alarmiert
 
 **E-Mail-Benachrichtigungen:**
 - Mail nur bei **neuen Flags** (nicht Altlasten)
 - Rate-Limit via `MAIL_MIN_ALERT_INTERVAL_MIN`
+- Betreff-Tags für Downstream-Filter: `[abs]`, `[jump]`, `[burst]` (ab `MAIL_BURST_MIN`, Default 25), ClamAV `[av]`
+  - Beispiel: `[NAS-EntropyWatcher] [jump][abs] 15 neue verdächtige Datei(en) auf pi-nas`
+  - Beispiel: `[NAS-AV] [av] 3 ClamAV-Fund(e) auf pi-nas`
 - ClamAV: Mail nur bei echten Funden (Exitcode 1)
 
 ## Monitoring & Logs

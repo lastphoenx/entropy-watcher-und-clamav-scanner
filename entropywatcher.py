@@ -95,6 +95,13 @@ from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 from email.message import EmailMessage
 from zoneinfo import ZoneInfo
+from alert_kind import (
+    DEFAULT_MAIL_BURST_MIN,
+    ALERT_TAG_AV,
+    ALERT_TAG_ENTROPY,
+    classify_entropy_alert,
+    kv_preamble,
+)
 
 # lokale Zeitstempel in CLI-Ausgabe-Protokoll, etc
 def _now_local(cfg: Dict[str, Any]) -> datetime.datetime:
@@ -337,6 +344,7 @@ def load_config(ctx=None, command_name: str = "") -> tuple[Dict[str, Any], Dict[
         "MAIL_TO": _env_str("MAIL_TO",""),
         "MAIL_SUBJECT_PREFIX": _env_str("MAIL_SUBJECT_PREFIX","[EntropyWatcher]"),
         "MAIL_MIN_ALERT_INTERVAL_MIN": _env_int("MAIL_MIN_ALERT_INTERVAL_MIN", 30),
+        "MAIL_BURST_MIN": _env_int("MAIL_BURST_MIN", DEFAULT_MAIL_BURST_MIN),
         "ALERT_STATE_FILE": os.getenv("ALERT_STATE_FILE","/var/lib/entropywatcher/last_alert.txt"),
     })
 
@@ -1602,6 +1610,9 @@ def scan(ctx, paths):
     # Konsistente Startzeit (DB/Log) + Liste für neu auf 'flagged' gewechselte Dateien
     scan_started_at = now_db()
     newly_flagged: List[Tuple[str, float, str]] = []  # (path, last_entropy, note)
+    n_abs = 0
+    n_jump = 0
+    max_jump_delta = None  # type: Optional[float]
 
     logger, q, listener = setup_logging(cfg)
     conn = db_connect(cfg)
@@ -1732,12 +1743,18 @@ def scan(ctx, paths):
                     start_entropy = row[5]            # start_entropy
                     will_flag = False
                     note_local = None
+                    hit_abs = False
+                    hit_jump = False
+                    jump_delta = None
                     if not score_excluded and ent is not None:
                         reasons = []
                         if ent >= cfg["ALERT_ENTROPY_ABS"]:
                             reasons.append(f"abs>={cfg['ALERT_ENTROPY_ABS']}")
+                            hit_abs = True
                         if start_entropy is not None and (ent - start_entropy) >= cfg["ALERT_ENTROPY_JUMP"]:
-                            reasons.append(f"jump {round(ent - start_entropy, 3)}")
+                            jump_delta = ent - start_entropy
+                            reasons.append(f"jump {round(jump_delta, 3)}")
+                            hit_jump = True
                         if reasons:
                             will_flag = True
                             note_local = ", ".join(reasons)
@@ -1757,6 +1774,14 @@ def scan(ctx, paths):
                         newly_flagged.append(
                             (str(p), float(ent) if ent is not None else float("nan"), note_local or "")
                         )
+                        if hit_abs:
+                            n_abs += 1
+                        if hit_jump:
+                            n_jump += 1
+                            if jump_delta is not None and (
+                                max_jump_delta is None or jump_delta > max_jump_delta
+                            ):
+                                max_jump_delta = jump_delta
 
         except Exception:
             logging.exception("Parallel-Phase fehlgeschlagen – fallback seriell.")
@@ -1795,12 +1820,18 @@ def scan(ctx, paths):
                 start_entropy = row[5]
                 will_flag = False
                 note_local = None
+                hit_abs = False
+                hit_jump = False
+                jump_delta = None
                 if not score_excluded and ent is not None:
                     reasons = []
                     if ent >= cfg["ALERT_ENTROPY_ABS"]:
                         reasons.append(f"abs>={cfg['ALERT_ENTROPY_ABS']}")
+                        hit_abs = True
                     if start_entropy is not None and (ent - start_entropy) >= cfg["ALERT_ENTROPY_JUMP"]:
-                        reasons.append(f"jump {round(ent - start_entropy, 3)}")
+                        jump_delta = ent - start_entropy
+                        reasons.append(f"jump {round(jump_delta, 3)}")
+                        hit_jump = True
                     if reasons:
                         will_flag = True
                         note_local = ", ".join(reasons)
@@ -1818,6 +1849,14 @@ def scan(ctx, paths):
                     newly_flagged.append(
                         (str(p), float(ent) if ent is not None else float("nan"), note_local or "")
                     )
+                    if hit_abs:
+                        n_abs += 1
+                    if hit_jump:
+                        n_jump += 1
+                        if jump_delta is not None and (
+                            max_jump_delta is None or jump_delta > max_jump_delta
+                        ):
+                            max_jump_delta = jump_delta
 
     # Fehlende markieren – nur für *diese* Quelle
     src = cfg.get("SOURCE_LABEL") or None
@@ -1841,32 +1880,60 @@ def scan(ctx, paths):
     # --- Mail-Alert NUR bei 0→1-Transitionen dieses Laufs ---
     try:
         if cfg.get("MAIL_ENABLE", False):
-            if newly_flagged and not _should_rate_limit(cfg):
-                lines = []
-                for path_str, ent_val, note_local in newly_flagged[:50]:
-                    ent_s = "-" if ent_val != ent_val else f"{ent_val:.3f}"  # NaN-Check
-                    lines.append(f"{path_str}\n  last={ent_s}  note={note_local}")
-
-                local_ts = _now_local(cfg)
-                summary = (
-                    f"Scan start (local): {local_ts:%Y-%m-%d %H:%M:%S %Z}\n"
-
-                    # optional zusätzlich UTC:
-                    # f"Scan start (UTC):   {datetime.now(timezone.utc):%Y-%m-%d %H:%M:%S} UTC\n"
-
-                    f"Timings: discovery={t_disc:.2f}s heavy={t_heavy:.2f}s total={t_total:.2f}s\n"
-                    f"Candidates={len(candidates)} Present={len(present)}\n\n"
-                    "Neue verdächtige Dateien:\n\n" + "\n".join(lines)
+            if newly_flagged:
+                burst_min = int(cfg.get("MAIL_BURST_MIN", DEFAULT_MAIL_BURST_MIN) or 0)
+                alert = classify_entropy_alert(len(newly_flagged), n_abs, n_jump, burst_min)
+                logging.info(
+                    "Alert-Kind=%s tags=%s flagged_new=%d abs=%d jump=%d",
+                    alert.kind,
+                    ",".join(alert.tags),
+                    len(newly_flagged),
+                    n_abs,
+                    n_jump,
                 )
-                send_alert_email(
-                    subject_core=f"{len(newly_flagged)} neue verdächtige Datei(en)",
-                    body=summary,
-                    cfg=cfg
-                )
-            elif not newly_flagged:
-                logging.info("Keine neuen flagged in diesem Lauf – keine Mail.")
+                if alert.kind == ALERT_TAG_ENTROPY:
+                    logging.warning("Alert-Kind fallback entropy (keine abs/jump-Zähler)")
+                if not _should_rate_limit(cfg):
+                    lines = []
+                    for path_str, ent_val, note_local in newly_flagged[:50]:
+                        ent_s = "-" if ent_val != ent_val else f"{ent_val:.3f}"  # NaN-Check
+                        lines.append(f"{path_str}\n  last={ent_s}  note={note_local}")
+
+                    local_ts = _now_local(cfg)
+                    max_delta_s = (
+                        f"{max_jump_delta:.3f}" if max_jump_delta is not None else None
+                    )
+                    preamble = kv_preamble([
+                        ("Alert-Kind", alert.kind),
+                        ("Alert-Tags", ",".join(alert.tags)),
+                        ("Flagged-New", len(newly_flagged)),
+                        ("Flagged-Abs", n_abs),
+                        ("Flagged-Jump", n_jump),
+                        ("Max-Jump-Delta", max_delta_s),
+                        ("Burst-Threshold", burst_min),
+                        ("Source", cfg.get("SOURCE_LABEL") or None),
+                        ("Host", socket.gethostname()),
+                    ])
+                    summary = (
+                        preamble + "\n\n"
+                        + f"Scan start (local): {local_ts:%Y-%m-%d %H:%M:%S %Z}\n"
+
+                        # optional zusätzlich UTC:
+                        # f"Scan start (UTC):   {datetime.now(timezone.utc):%Y-%m-%d %H:%M:%S} UTC\n"
+
+                        + f"Timings: discovery={t_disc:.2f}s heavy={t_heavy:.2f}s total={t_total:.2f}s\n"
+                        + f"Candidates={len(candidates)} Present={len(present)}\n\n"
+                        + "Neue verdächtige Dateien:\n\n" + "\n".join(lines)
+                    )
+                    send_alert_email(
+                        subject_core=f"{alert.tag_block} {len(newly_flagged)} neue verdächtige Datei(en)",
+                        body=summary,
+                        cfg=cfg
+                    )
+                else:
+                    logging.info("Alert-Mail unterdrückt (Rate-Limit aktiv).")
             else:
-                logging.info("Alert-Mail unterdrückt (Rate-Limit aktiv).")
+                logging.info("Keine neuen flagged in diesem Lauf – keine Mail.")
     except Exception:
         logging.exception("Alert-Phase fehlgeschlagen")
 
@@ -2679,9 +2746,17 @@ def av_scan(ctx, paths):
         # Mail bei Funden
         if findings and cfg.get("MAIL_ENABLE", False):
             lines = "\n".join(f"{p}\n  {sig}" for p, sig in findings[:50])
+            preamble = kv_preamble([
+                ("Alert-Kind", ALERT_TAG_AV),
+                ("Alert-Tags", ALERT_TAG_AV),
+                ("AV-Findings", len(findings)),
+                ("AV-ExitCode", rc),
+                ("Source", cfg.get("SOURCE_LABEL") or None),
+                ("Host", socket.gethostname()),
+            ])
             send_alert_email(
-                subject_core=f"{len(findings)} ClamAV-Fund(e)",
-                body=(summary + "\n\n" + lines),
+                subject_core=f"[{ALERT_TAG_AV}] {len(findings)} ClamAV-Fund(e)",
+                body=(preamble + "\n\n" + summary + "\n\n" + lines),
                 cfg=cfg
             )
 

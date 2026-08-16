@@ -61,6 +61,7 @@ Alert-System bei Entropie-Anomalien oder ClamAV-Funden.
 | `MAIL_TO` | string | - | Empfänger-Adresse (Comma-separated für mehrere) |
 | `MAIL_SUBJECT_PREFIX` | string | `[EntropyWatcher]` | Betreff-Präfix (z.B. `[NAS-AV]`, `[OS-Entropy]`) |
 | `MAIL_MIN_ALERT_INTERVAL_MIN` | int | `30` | Rate-Limit: Min. Minuten zwischen Alarm-E-Mails |
+| `MAIL_BURST_MIN` | int | `25` | Ab so vielen **neuen** Flags im Lauf kommt `[burst]` in den Betreff. `0` = Tag aus. Deployment-spezifisch, anhand `scan_summary.flagged_new_count` tunen. |
 | `ALERT_STATE_FILE` | path | `/var/lib/entropywatcher/last_alert.txt` | State-File für Rate-Limiting (pro Service eigenes File!) |
 
 **Best Practice:**
@@ -72,6 +73,41 @@ Alert-System bei Entropie-Anomalien oder ClamAV-Funden.
 - Alarm-Mails werden nur versendet, wenn letzter Alert älter als `MAIL_MIN_ALERT_INTERVAL_MIN`
 - Verhindert E-Mail-Spam bei anhaltenden Anomalien
 - Honeyfile-Alerts umgehen das Rate-Limit (kritischer Vorfall!)
+
+**Subject-Tags (maschinenlesbar, für Filter/KI-Mail-Helper):**
+
+Der deutsche Betreff-Text bleibt; Tags stehen direkt hinter dem Prefix:
+
+```
+[NAS-EntropyWatcher] [jump][abs] 15 neue verdächtige Datei(en) auf pi-nas
+[NAS-AV] [av] 3 ClamAV-Fund(e) auf pi-nas
+```
+
+| Token | Wann |
+|-------|------|
+| `[jump]` | Mindestens eine neue Datei mit Sprung gegenüber der **Baseline** (`start_entropy`) |
+| `[abs]` | Mindestens eine neue Datei mit `last_entropy >= ALERT_ENTROPY_ABS` |
+| `[burst]` | `flagged_new >= MAIL_BURST_MIN` (Modifier, nie alleiniges Kind) |
+| `[av]` | ClamAV-Funde |
+| Honeyfile (eigenes Script) | Betreff enthält `HONEYFILE ACCESS DETECTED`, `CONFIG SNIFFING` oder `AUDIT TAMPERING` |
+
+`[jump]` und `[abs]` können kombiniert vorkommen. Primäres `Alert-Kind` im Body: `jump` gewinnt vor `abs`.
+
+Der Mail-Body beginnt mit einem ASCII-Block (`Key: value`, leere Werte `-`):
+
+```
+Alert-Kind: jump
+Alert-Tags: jump,abs
+Flagged-New: 15
+Flagged-Abs: 12
+Flagged-Jump: 6
+Max-Jump-Delta: 1.842
+Burst-Threshold: 25
+Source: nas
+Host: pi-nas
+```
+
+`Flagged-Abs + Flagged-Jump` darf `Flagged-New` übersteigen (eine Datei kann beides treffen). ClamAV-Mails analog mit `Alert-Kind: av`, `AV-Findings`, `AV-ExitCode`.
 
 ---
 
@@ -135,7 +171,7 @@ SCORE_EXCLUDES="*.jpg,*.jpeg,*.png,*.gif,*.mp4,*.mkv,*.avi,*.mp3,*.ogg,*.flac,*.
 | Variable | Typ | Default | Beschreibung |
 |----------|-----|---------|--------------|
 | `ALERT_ENTROPY_ABS` | float | `7.8` | Absoluter Schwellwert (bits/Byte) - Dateien mit `last_entropy >= 7.8` werden geflaggt |
-| `ALERT_ENTROPY_JUMP` | float | `0.2` | Relativer Sprung-Schwellwert - Alarm bei Delta `>= 0.2` zur Baseline/prev |
+| `ALERT_ENTROPY_JUMP` | float | `1.0` | Relativer Sprung-Schwellwert gegen die Baseline (`start_entropy`). Template/Prod oft `0.2`. |
 | `QUICK_FINGERPRINT` | 0\|1 | `1` | Head/Tail-MD5 zur schnellen Änderungsdetektion (ohne Full-Read) |
 | `QUICK_FP_SAMPLE` | int | `65536` | Anzahl Bytes für Fingerprint (je 64 KiB Kopf+Ende = 128 KiB total) |
 | `PERIODIC_REVERIFY_DAYS` | int | `7` | Vollverifikation alle N Tage, auch wenn mtime unverändert |
@@ -145,7 +181,7 @@ SCORE_EXCLUDES="*.jpg,*.jpeg,*.png,*.gif,*.mp4,*.mkv,*.avi,*.mp3,*.ogg,*.flac,*.
 # Alarm wird ausgelöst bei:
 if last_entropy >= ALERT_ENTROPY_ABS:  # Absolut: >= 7.8
     flag_file()
-elif (last_entropy - prev_entropy) >= ALERT_ENTROPY_JUMP:  # Sprung: Delta >= 0.2
+elif (last_entropy - start_entropy) >= ALERT_ENTROPY_JUMP:  # Sprung vs. Baseline
     flag_file()
 ```
 
@@ -158,7 +194,7 @@ elif (last_entropy - prev_entropy) >= ALERT_ENTROPY_JUMP:  # Sprung: Delta >= 0.
 **Tuning:**
 - `ALERT_ENTROPY_ABS=7.8` - Konservativ (wenig False-Positives)
 - `ALERT_ENTROPY_ABS=7.5` - Aggressiv (fängt mehr Compressed-Files)
-- `ALERT_ENTROPY_JUMP=0.2` - Erkennt Ransomware-Verschlüsselung (Plaintext → Ciphertext)
+- `ALERT_ENTROPY_JUMP=0.2` - Erkennt Ransomware-Verschlüsselung (Plaintext → Ciphertext); Prod-Template, Code-Default ist `1.0`
 
 ---
 

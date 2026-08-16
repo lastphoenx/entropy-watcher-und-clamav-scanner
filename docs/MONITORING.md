@@ -197,9 +197,9 @@ MAIL_MIN_ALERT_INTERVAL_MIN=30  # Max 1 Mail pro 30 Minuten
 ```
 
 **Wann werden Mails verschickt?**
-- **EntropyWatcher:** Nur bei **neuen** Flags (nicht Altlasten)
-- **ClamAV:** Nur bei echten Funden (Exit 1)
-- **Honeyfiles:** Jeder Zugriff = sofort Email
+- **EntropyWatcher:** Nur bei **neuen** Flags (nicht Altlasten). Betreff trägt `[abs]` / `[jump]` / optional `[burst]`.
+- **ClamAV:** Nur bei echten Funden (Exit 1). Betreff trägt `[av]`.
+- **Honeyfiles:** Jeder Zugriff = sofort Email (`HONEYFILE ACCESS DETECTED` / `CONFIG SNIFFING` / `AUDIT TAMPERING`)
 
 ### Test-Email senden
 
