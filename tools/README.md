@@ -98,7 +98,9 @@ ExcludePath ^/root/.git-credentials_b8g2h_20251214$
 
 2. **Wartet auf Abschluss** (max. 30 Minuten default)
 
-3. **Fährt herunter** wenn alle Services fertig sind
+3. **Fährt herunter** wenn alle Services fertig sind (+1 Minute, `shutdown -c` möglich)
+
+4. **Protokoll:** `logger` (journald) + `/var/log/graceful_shutdown.log`; wartet bis zur geplanten Halt-Zeit (SSH kann vorher weg)
 
 ### Usage
 
@@ -118,9 +120,11 @@ sudo ./graceful_shutdown.sh --dry-run
 
 ### Exitcodes
 
-- **0** - Erfolgreich heruntergefahren (alle Services beendet)
-- **1** - Fehler / Timeout (Services laufen noch)
+- **0** - Shutdown geplant; Wartezeit bis Halt (Prozess endet mit systemd)
+- **1** - Fehler / Timeout / aktives Lockfile oder blockierende Prozesse
 - **2** - Nur `--dry-run` ausgeführt (keine echte Aktion)
+
+Nach dem nächsten Boot: `journalctl -t graceful_shutdown`, `tail /var/log/graceful_shutdown.log`, optional `journalctl -b -1` für die systemd-Shutdown-Kette.
 
 ### Integration mit systemd
 

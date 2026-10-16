@@ -12,8 +12,8 @@
 #   --no-shutdown        Nach Warten nicht herunterfahren (nur prüfen & warten)
 #
 # Exit Codes:
-#   0 = Erfolgreich heruntergefahren
-#   1 = Fehler / Timeout
+#   0 = Shutdown geplant; Wartezeit bis Halt abgelaufen (Prozess endet mit systemd)
+#   1 = Fehler / Timeout / Lockfile oder Prozesse blockieren
 #   2 = Nur --dry-run ausgeführt
 
 set -euo pipefail
@@ -25,7 +25,9 @@ TIMEOUT=1800          # 30 Minuten max Wartezeit
 DRY_RUN=0
 NO_SHUTDOWN=0
 POLL_INTERVAL=10      # Sekunden zwischen Checks
+SHUTDOWN_DELAY_SEC=60 # Entspricht shutdown -h +1 (Abbrechen: shutdown -c)
 LOCKFILE="/run/backup_pipeline.lock" # Globales Lockfile
+LOG_FILE="/var/log/graceful_shutdown.log"
 
 # Parse Argumente
 while [[ $# -gt 0 ]]; do
@@ -53,11 +55,61 @@ done
 # Helper Functions
 # ============================================================================
 log() {
-    printf "%s [graceful_shutdown] %s\n" "$(date '+%F %T')" "$*"
+    local line
+    line="$(date '+%F %T') [graceful_shutdown] $*"
+    printf "%s\n" "$line"
+    logger -t graceful_shutdown -- "$*"
+    if [[ -w /var/log ]] || [[ -f "$LOG_FILE" ]]; then
+        printf "%s\n" "$(date -Is) $line" >>"$LOG_FILE" 2>/dev/null || true
+    fi
 }
 
 error() {
-    printf "%s [graceful_shutdown] ✗ %s\n" "$(date '+%F %T')" "$*" >&2
+    local line
+    line="$(date '+%F %T') [graceful_shutdown] ✗ $*"
+    printf "%s\n" "$line" >&2
+    logger -t graceful_shutdown -p user.err -- "$*"
+    if [[ -w /var/log ]] || [[ -f "$LOG_FILE" ]]; then
+        printf "%s\n" "$(date -Is) $line" >>"$LOG_FILE" 2>/dev/null || true
+    fi
+}
+
+is_lockfile_held() {
+    if [[ ! -f "$LOCKFILE" ]]; then
+        return 1
+    fi
+    exec 9<"$LOCKFILE"
+    if flock -n 9; then
+        exec 9<&-
+        return 1
+    fi
+    exec 9<&-
+    return 0
+}
+
+wait_for_scheduled_halt() {
+    local halt_at="$1"
+    local now remaining
+
+    log "Warte ${SHUTDOWN_DELAY_SEC}s bis Halt (Abbrechen: shutdown -c). SSH kann vorher abbrechen — Halt läuft trotzdem."
+    log "Nach Halt: Netzteil aus, dann SD tauschen. „Wirklich aus“ von außen: ping weg oder LED aus."
+
+    while true; do
+        now=$(date +%s)
+        if (( now >= halt_at )); then
+            break
+        fi
+        remaining=$((halt_at - now))
+        log "Noch ${remaining}s bis geplanter Halt..."
+        if (( remaining > 10 )); then
+            sleep 10
+        else
+            sleep "$remaining"
+        fi
+    done
+
+    log "Halt-Zeit erreicht — systemd fährt jetzt herunter."
+    sync
 }
 
 is_service_running() {
@@ -164,16 +216,11 @@ log "Prüfe laufende Prozesse & Lockfile..."
 RUNNING_PROCESSES=0
 
 # 1. Lockfile Check
-if [[ -f "$LOCKFILE" ]]; then
-    # Prüfen ob Lockfile wirklich gelockt ist (flock -n prüft non-blocking)
-    exec 9<"$LOCKFILE"
-    if ! flock -n 9; then
-        log "⚠ Globales Lockfile $LOCKFILE ist aktiv (Backup läuft!)"
-        RUNNING_PROCESSES=$((RUNNING_PROCESSES + 1))
-    else
-        log "✓ Lockfile existiert, ist aber nicht gesperrt (Stale?)"
-    fi
-    exec 9<&-
+if is_lockfile_held; then
+    log "⚠ Globales Lockfile $LOCKFILE ist aktiv (Backup läuft!)"
+    RUNNING_PROCESSES=$((RUNNING_PROCESSES + 1))
+elif [[ -f "$LOCKFILE" ]]; then
+    log "✓ Lockfile existiert, ist aber nicht gesperrt (Stale?)"
 fi
 
 if check_process "entropywatcher" "entropywatcher.py"; then
@@ -208,6 +255,11 @@ if [[ $DRY_RUN -eq 1 ]]; then
         log "  Bei normalem Aufruf würde auf diese gewartet"
         exit 2
     fi
+fi
+
+if [[ $RUNNING_PROCESSES -gt 0 ]]; then
+    error "Backup/Lockfile oder manuelle Prozesse aktiv — Shutdown abgebrochen."
+    exit 1
 fi
 
 # ============================================================================
@@ -286,11 +338,12 @@ log "═════════════════════════
 log "✓✓✓ Fahre Server sauber herunter..."
 log "════════════════════════════════════════════════════════════════════"
 
-# Letzte Logs flushen
 sync
 
-# Herunterfahren (+1 Minute Frist)
-sudo shutdown -h +1 "graceful_shutdown: Server wird heruntergefahren"
+halt_at=$(($(date +%s) + SHUTDOWN_DELAY_SEC))
+shutdown -h +1 "graceful_shutdown: Server wird heruntergefahren"
 
+log "Shutdown geplant für $(date -d "@$halt_at" '+%F %T %Z' 2>/dev/null || date -r "$halt_at" '+%F %T %Z' 2>/dev/null || echo "@$halt_at")"
 log "Shutdown initiiert. System fährt in 1 Minute herunter."
-exit 0
+
+wait_for_scheduled_halt "$halt_at"
