@@ -3,20 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoring Documentation</title>
+    <title>Monitoring &amp; Logs — pi-nas</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #e2e8f0;
-            line-height: 1.6;
+            line-height: 1.65;
             min-height: 100vh;
         }
 
@@ -37,12 +33,9 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            transition: color 0.2s;
         }
 
-        .back-link a:hover {
-            color: #34d399;
-        }
+        .back-link a:hover { color: #34d399; }
 
         .container {
             max-width: 1200px;
@@ -59,29 +52,35 @@
 
         #content h1 {
             color: #10b981;
-            margin-bottom: 24px;
-            font-size: 2.5rem;
+            margin-bottom: 16px;
+            font-size: 2.25rem;
+        }
+
+        #content .lead {
+            color: #94a3b8;
+            margin-bottom: 28px;
+            max-width: 72ch;
         }
 
         #content h2 {
             color: #34d399;
-            margin-top: 32px;
-            margin-bottom: 16px;
+            margin-top: 36px;
+            margin-bottom: 14px;
             padding-bottom: 8px;
             border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+            font-size: 1.45rem;
         }
+
+        #content h2:first-of-type { margin-top: 8px; }
 
         #content h3 {
             color: #6ee7b7;
-            margin-top: 24px;
-            margin-bottom: 12px;
+            margin-top: 22px;
+            margin-bottom: 10px;
+            font-size: 1.05rem;
         }
 
-        #content h4 {
-            color: #a7f3d0;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
+        #content p { margin-bottom: 12px; }
 
         #content code {
             background: rgba(15, 23, 42, 0.8);
@@ -99,7 +98,8 @@
             border-radius: 8px;
             padding: 16px;
             overflow-x: auto;
-            margin: 16px 0;
+            margin: 12px 0 16px;
+            font-size: 0.88rem;
         }
 
         #content pre code {
@@ -112,130 +112,55 @@
         #content table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 16px 0;
             background: rgba(15, 23, 42, 0.6);
-            border-radius: 8px;
-            overflow: hidden;
+            font-size: 0.92rem;
         }
 
         #content th {
             background: rgba(16, 185, 129, 0.2);
             color: #10b981;
-            padding: 12px;
+            padding: 10px 12px;
             text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid rgba(16, 185, 129, 0.5);
         }
 
         #content td {
             padding: 10px 12px;
-            border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+            border-top: 1px solid rgba(71, 85, 105, 0.35);
+            vertical-align: top;
         }
 
-        #content tr:hover {
-            background: rgba(16, 185, 129, 0.05);
+        #content ul, #content ol {
+            margin: 0 0 14px 22px;
         }
+
+        #content li { margin-bottom: 6px; }
 
         #content a {
             color: #60a5fa;
             text-decoration: none;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.2s;
         }
 
-        #content a:hover {
-            border-bottom-color: #60a5fa;
+        #content a:hover { text-decoration: underline; }
+
+        .md-divider {
+            margin: 48px 0 32px;
+            border: none;
+            border-top: 1px solid rgba(71, 85, 105, 0.6);
         }
 
-        #content blockquote {
-            border-left: 4px solid #10b981;
-            padding-left: 20px;
-            margin: 20px 0;
-            color: #94a3b8;
-            font-style: italic;
-        }
-
-        #content ul, #content ol {
-            margin-left: 24px;
-            margin-bottom: 16px;
-        }
-
-        #content li {
-            margin-bottom: 8px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
+        .md-appendix-title {
             color: #64748b;
-            font-size: 1.2rem;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
         }
 
-        .pipeline-runbook {
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(16, 185, 129, 0.45);
-            border-radius: 12px;
-            padding: 28px 32px;
-            margin-bottom: 28px;
+        #md-appendix .loading {
+            color: #64748b;
+            padding: 24px 0;
         }
 
-        .pipeline-runbook h2 {
-            color: #34d399;
-            margin: 0 0 12px 0;
-            font-size: 1.5rem;
-            border-bottom: 2px solid rgba(16, 185, 129, 0.3);
-            padding-bottom: 8px;
-        }
-
-        .pipeline-runbook h3 {
-            color: #6ee7b7;
-            margin: 20px 0 10px 0;
-            font-size: 1.1rem;
-        }
-
-        .pipeline-runbook p, .pipeline-runbook li {
-            color: #e2e8f0;
-            margin-bottom: 8px;
-        }
-
-        .pipeline-runbook pre {
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(71, 85, 105, 0.5);
-            border-radius: 8px;
-            padding: 14px;
-            overflow-x: auto;
-            margin: 12px 0;
-            font-size: 0.85rem;
-        }
-
-        .pipeline-runbook code {
-            font-family: 'Courier New', monospace;
-            color: #fbbf24;
-        }
-
-        .pipeline-runbook table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-            font-size: 0.9rem;
-        }
-
-        .pipeline-runbook th, .pipeline-runbook td {
-            border: 1px solid rgba(71, 85, 105, 0.4);
-            padding: 8px 10px;
-            text-align: left;
-        }
-
-        .pipeline-runbook th {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-        }
-
-        .pipeline-runbook .path-note {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            margin-top: 16px;
-        }
+        #md-appendix h1 { display: none; }
     </style>
 </head>
 <body>
@@ -247,67 +172,121 @@
     </div>
 
     <div class="container">
-        <section class="pipeline-runbook" id="backup-pipeline-fehleranalyse">
-            <h2>Backup-Pipeline (pi-nas) — Fehleranalyse</h2>
-            <p>RTB + pCloud (<code>backup-pipeline.service</code>). Logs: <code>/var/log/backup/rtb_wrapper.log</code>, <code>/var/log/backup/pcloud_sync.log</code>. Entropy-Journal allein reicht nicht.</p>
+        <div id="content">
+            <h1>Monitoring &amp; Logs</h1>
+            <p class="lead">
+                Diese Seite beschreibt zwei Dinge: <strong>die Backup-Pipeline</strong> (RTB auf die SSD, dann Upload nach pCloud)
+                und <strong>EntropyWatcher</strong> (Scans, Safety-Gate). Bei „Backup fehlgeschlagen“ zuerst den Abschnitt
+                <strong>Backup-Pipeline — Fehleranalyse</strong> — nicht nur das EntropyWatcher-Journal.
+            </p>
 
-            <h3>1) Timer / systemd — warum <code>failed</code>?</h3>
+            <h2 id="backup-pipeline-fehleranalyse">Backup-Pipeline — Fehleranalyse</h2>
+            <p>
+                <strong>Typische Auslöser:</strong> <code>backup-pipeline.service</code> steht auf <code>failed</code>,
+                der Timer (04:00 / 12:00 / 20:00) hat nichts fertig gemacht, oder du willst wissen, ob pCloud noch arbeitet
+                (<code>activating</code> ist oft normal während <code>copyfolder</code>).
+            </p>
+            <p><strong>Zwei Logdateien (auf pi-nas):</strong></p>
+            <ul>
+                <li><code>/var/log/backup/rtb_wrapper.log</code> — Safety-Gate, RTB-Staging, Start/Ende des pCloud-Wrappers</li>
+                <li><code>/var/log/backup/pcloud_sync.log</code> — nur der pCloud-Upload (beginnt mit <code>pCloud Sync 1to1 Start</code>)</li>
+            </ul>
+
+            <h3>Schritt 1 — systemd: Ist ein Lauf aktiv oder abgebrochen?</h3>
             <pre><code>systemctl is-active backup-pipeline.service
 systemctl list-timers backup-pipeline.timer --no-pager
 
 journalctl -u backup-pipeline.service --since today --no-pager \
-  | grep -E 'Starting|Started|Failed|exit-code|status=|Main process exited'
-
-journalctl -u backup-pipeline.timer --since today --no-pager</code></pre>
+  | grep -E 'Starting|Started|Failed|exit-code|status=|Main process exited'</code></pre>
+            <p><strong>So liest du das:</strong></p>
             <ul>
-                <li><code>activating</code> = Lauf noch aktiv (copyfolder kann lange dauern).</li>
-                <li>Exit <strong>2</strong> nach ~1 s = oft Safety-Gate <strong>RED</strong> → siehe <code>rtb_wrapper.log</code>.</li>
+                <li><code>activating</code> — der Oneshot läuft noch (RTB oder pCloud). Bei pCloud kann das viele Stunden sein.</li>
+                <li><code>failed</code> + Exit <code>2</code> nach wenigen Sekunden — sehr oft Safety-Gate <strong>RED</strong> (siehe Schritt 2), nicht „pCloud hängt“.</li>
+                <li><code>active</code> / <code>inactive</code> mit <code>status=0/SUCCESS</code> — letzter Lauf durch.</li>
             </ul>
 
-            <h3>2) Safety-Gate &amp; RTB</h3>
+            <h3>Schritt 2 — Warum blockiert das Safety-Gate? (RTB-Log)</h3>
             <pre><code>sudo grep -E 'SafetyGate|ABORT|safety\]|done\]|error\]|pCloud' \
-  /var/log/backup/rtb_wrapper.log | tail -60
+  /var/log/backup/rtb_wrapper.log | tail -80
 
 /opt/apps/entropywatcher/main/safety_gate.sh; echo "exit=$?"</code></pre>
+            <p><code>safety_gate.sh</code>: Exit <code>0</code> = GREEN, <code>1</code> = YELLOW, <code>2</code> = RED.
+            Standard <code>backup-pipeline.service</code>: <code>SAFETY_GATE_STRICT=0</code> — YELLOW blockiert <em>nicht</em>, RED schon.</p>
             <table>
-                <tr><th>Log</th><th>Bedeutung</th></tr>
-                <tr><td>RED + Honeyfile</td><td>Exit 2 — <code>sudo ausearch -k honeyfile_access --start recent</code></td></tr>
-                <tr><td>YELLOW <code>too_fresh_to_trust</code></td><td>Mit <code>SAFETY_GATE_STRICT=0</code> läuft Backup trotzdem</td></tr>
-                <tr><td><code>[done] RTB erfolgreich</code></td><td>pCloud-Phase läuft / folgt</td></tr>
+                <thead>
+                    <tr><th>Im Log</th><th>Was es bedeutet</th><th>Was du tun kannst</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>RED</code>, Honeyfile / Audit</td>
+                        <td>Backup wird bewusst nicht gestartet (Exit 2).</td>
+                        <td><code>sudo ausearch -k honeyfile_access --start recent</code> — welcher Prozess? (z. B. nächtlicher <code>clamscan</code> auf eine Köderdatei)</td>
+                    </tr>
+                    <tr>
+                        <td><code>YELLOW</code>, <code>too_fresh_to_trust</code></td>
+                        <td>Entropy-Scan ist jünger als die Abkühlzeit (~10 min).</td>
+                        <td>Warten oder erneut prüfen; mit STRICT=0 läuft die Pipeline trotzdem weiter.</td>
+                    </tr>
+                    <tr>
+                        <td><code>[done] RTB erfolgreich</code> dann <code>pCloud-Sync POOL-MODE</code></td>
+                        <td>Staging auf der SSD ist fertig, Upload läuft oder folgt.</td>
+                        <td>Schritt 3 — <code>pcloud_sync.log</code></td>
+                    </tr>
+                </tbody>
             </table>
+            <p>Diagramme: <a href="timing-diagram-red.html">RED (blockiert)</a> ·
+            <a href="timing-diagram-yellow.html">YELLOW (STRICT vs. Standard)</a></p>
 
-            <h3>3) pCloud Pool-Sync</h3>
+            <h3>Schritt 3 — pCloud: hängt copyfolder oder läuft der Upload?</h3>
             <pre><code>sudo tail -f /var/log/backup/pcloud_sync.log
-sudo grep -E 'Struktur geklont|copyfolder: warte' /var/log/backup/pcloud_sync.log | tail -10
+
+sudo grep -E 'Struktur geklont|copyfolder: warte|Phase 4|Complete' \
+  /var/log/backup/pcloud_sync.log | tail -20
+
 sudo pgrep -af 'wrapper_pcloud|pcloud_push_json_pool' || true</code></pre>
-            <p>Erste Zeile pro Lauf: <code>========== pCloud Sync 1to1 Start ==========</code>. Lange Pause nach <code>Phase 1: Klone Basis-Snapshot</code> = copyfolder (Heartbeat alle 15&nbsp;min).</p>
+            <p><strong>So liest du das:</strong></p>
+            <ul>
+                <li>Nach RTB oft <code>Safety-delay</code>, dann <code>Checking for missing snapshots</code> — dazwischen kann es <strong>minutenlang</strong> still sein (pCloud-API).</li>
+                <li><code>Phase 1: Klone Basis-Snapshot</code> — serverseitiges <code>copyfolder</code>; Heartbeat etwa alle 15 min (<code>copyfolder: warte</code>), Dauer von ~15 min bis mehrere Stunden ist normal.</li>
+                <li><code>pCloud Sync 1to1 Complete</code> — Upload für diesen Snapshot fertig.</li>
+            </ul>
 
-            <h3>4) Retry</h3>
+            <h3>Schritt 4 — Erneut starten (nur wenn Gate nicht mehr RED)</h3>
             <pre><code>sudo systemctl start backup-pipeline.service</code></pre>
-            <p>Nur wenn Safety-Gate nicht mehr RED. Timing-Diagramme: <a href="timing-diagram-yellow.html">YELLOW</a>, <a href="timing-diagram-red.html">RED</a>.</p>
-            <p class="path-note">Deploy: <code>sync-repos</code> pullt nach <code>/opt/apps/entropywatcher/main</code>. Das Dashboard unter <code>:8080/entropy-watcher-und-clamav-scanner/docs/</code> muss dieselben Dateien servieren (Symlink oder gleicher Clone). Dieser Abschnitt steht fest in <code>MONITORING.html</code> — unabhängig vom Markdown-Laden.</p>
-        </section>
+            <p>Ein fehlgeschlagener Oneshot bleibt in <code>failed</code>, bis ein Lauf <strong>erfolgreich</strong> durch ist — das ist systemd-normal, kein „hängender Zombie“.</p>
 
-        <div id="content" class="loading">
-            Lade Dokumentation...
+            <hr class="md-divider">
+            <p class="md-appendix-title">EntropyWatcher — Detaildoku (Journal, Status-JSON, Dashboard-Felder)</p>
+            <div id="md-appendix">
+                <p class="loading">Lade Zusatzkapitel aus MONITORING.md …</p>
+            </div>
         </div>
     </div>
 
     <script>
-        async function loadMarkdown() {
+        function stripDuplicateMarkdown(md) {
+            let out = md.replace(/\r\n/g, '\n');
+            out = out.replace(/^# Monitoring & Logs\s*\n+Übersicht[\s\S]*?\n---\n+/m, '');
+            out = out.replace(/\*\*Schnellzugriff\*\*[\s\S]*?\n---\n+/m, '');
+            out = out.replace(/## Backup-Pipeline \(pi-nas\) — Fehleranalyse[\s\S]*?\n---\n+/m, '');
+            return out.trim();
+        }
+
+        async function loadMarkdownAppendix() {
+            const el = document.getElementById('md-appendix');
             try {
-                const response = await fetch('MONITORING.md?v=20261018');
-                const markdown = await response.text();
-                const html = marked.parse(markdown);
-                document.getElementById('content').innerHTML = html;
+                const response = await fetch('MONITORING.md?v=20261018b');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const markdown = stripDuplicateMarkdown(await response.text());
+                el.innerHTML = marked.parse(markdown);
             } catch (error) {
-                document.getElementById('content').innerHTML = 
-                    '<h1 style="color: #ef4444;">Fehler beim Laden</h1>' +
-                    '<p>Die Dokumentation konnte nicht geladen werden: ' + error.message + '</p>';
+                el.innerHTML =
+                    '<p style="color:#f87171">MONITORING.md konnte nicht geladen werden (' + error.message +
+                    '). Die Backup-Pipeline-Anleitung oben ist davon unabhängig.</p>';
             }
         }
 
-        loadMarkdown();
+        loadMarkdownAppendix();
     </script>
 </body>
 </html>
