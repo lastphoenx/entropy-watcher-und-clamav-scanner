@@ -96,6 +96,76 @@ echo $?  # 0=GREEN, 1=YELLOW, 2=RED
 #     → RTB/pCloud Backups ERLAUBT
 ```
 
+**Exit-Codes (`safety_gate.sh`):** `0` = GREEN, `1` = YELLOW, `2` = RED.  
+Im RTB-Wrapper (`rtb_pool_wrapper.sh`): RED → Exit **2** (Pipeline `failed`). YELLOW → nur blockiert, wenn **`SAFETY_GATE_STRICT=1`**; Standard in `backup-pipeline.service` ist **`SAFETY_GATE_STRICT=0`** (Backup mit Warnung).
+
+---
+
+## Backup-Pipeline (pi-nas) — Fehleranalyse
+
+Wenn `backup-pipeline.service` fehlschlägt oder „hängt“, zuerst **systemd**, dann **Wrapper-Log**, dann **pCloud-Log**. EntropyWatcher-Journal allein reicht nicht — die Pipeline loggt zentral in `/var/log/backup/`.
+
+### 1) Lief der Timer? Warum `failed`?
+
+```bash
+systemctl is-active backup-pipeline.service
+systemctl list-timers backup-pipeline.timer --no-pager
+
+journalctl -u backup-pipeline.service --since today --no-pager \
+  | grep -E 'Starting|Started|Failed|exit-code|status=|Main process exited'
+
+journalctl -u backup-pipeline.timer --since today --no-pager
+```
+
+- **Oneshot + `activating`:** Lauf noch aktiv (RTB oder pCloud) — normal bei langem `copyfolder`.
+- **Exit 2 in ~1 s:** oft Safety-Gate **RED** (Honeyfile-Audit, Entropy/AV) — Details im Wrapper-Log, nicht in `pcloud_sync.log`.
+
+### 2) Safety-Gate & RTB (immer hier beginnen)
+
+```bash
+sudo grep -E 'SafetyGate|ABORT|safety\]|done\]|error\]|pCloud' \
+  /var/log/backup/rtb_wrapper.log | tail -60
+
+/opt/apps/entropywatcher/main/safety_gate.sh; echo "exit=$?"
+```
+
+| Log-Muster | Bedeutung | Nächster Schritt |
+|------------|-----------|------------------|
+| `RED` + Honeyfile / Audit | Backup blockiert (Exit 2) | `sudo ausearch -k honeyfile_access --start recent` — Täter-Prozess prüfen (z. B. geplanter `clamscan`) |
+| `YELLOW` + `too_fresh_to_trust` | Scan zu jung | Warten `HEALTH_SAFEAGE_MIN` oder später erneut starten; mit STRICT=0 läuft Backup trotzdem |
+| `[done] RTB erfolgreich` | Staging OK | pCloud-Phase läuft oder folgt |
+
+### 3) pCloud Pool-Sync
+
+```bash
+sudo tail -f /var/log/backup/pcloud_sync.log
+```
+
+- Erste Zeile pro Lauf: `========== pCloud Sync 1to1 Start ==========` (RTB steht nur in `rtb_wrapper.log`).
+- Nach RTB: `Safety-delay …` → `Checking for missing snapshots…` (Remote-Listing kann **minutenlang ohne** neue Zeile dauern).
+- Turbo-Delta: `Phase 1: Klone Basis-Snapshot…` — danach oft **15+ min Stille**; Heartbeat alle `PCLOUD_COPYFOLDER_HEARTBEAT_SEC` (Default 900): `copyfolder: warte auf pCloud-API`.
+- Fortschritt: `sudo grep -E 'Struktur geklont|copyfolder: warte' /var/log/backup/pcloud_sync.log | tail -10`
+
+```bash
+sudo pgrep -af 'wrapper_pcloud|pcloud_push_json_pool' || true
+```
+
+### 4) Manueller Retry (nach geklärtem Gate)
+
+```bash
+sudo systemctl start backup-pipeline.service
+```
+
+Nur starten, wenn Safety-Gate nicht mehr RED ist. Ein fehlgeschlagener Oneshot bleibt `failed`, bis ein Lauf **erfolgreich** durch ist.
+
+### Timing-Szenarien (Web)
+
+- [YELLOW / too_fresh_to_trust](timing-diagram-yellow.html) — inkl. STRICT=0 vs STRICT=1  
+- [RED](timing-diagram-red.html) — blockiert sofort  
+- [Alle Szenarien](timing-diagram-all-scenarios.html)
+
+Ausführlicher Betrieb (Logs, Pfade): privates `doku/Raspi/raspinas/ops/betrieb.md` (pi-nas).
+
 ---
 
 ## ⏰ Timer-Status
@@ -272,7 +342,7 @@ cat /opt/apps/monitoring/status.json | jq '.services.entropywatcher'
 
 ---
 
-## � API Reference - entropywatcher.py status Response
+## API Reference - entropywatcher.py status Response
 
 ### JSON Response Schema
 
@@ -304,7 +374,7 @@ Wenn `entropywatcher.py status --json` aufgerufen wird, gibt es ein strukturiert
 | Status | Exit Code | Bedeutung |
 |--------|-----------|-----------|
 | `green` | 0 | Alle Checks OK, Backup erlaubt |
-| `yellow` | 1 | Warnung, Backup mit Vorsicht (im strict-mode blockiert) |
+| `yellow` | 1 | Warnung; mit `SAFETY_GATE_STRICT=1` blockiert, Standard pi-nas (`STRICT=0`) erlaubt Backup |
 | `red` | 2 | Kritisch, Backup blockiert |
 
 ### Reasons-Array
@@ -495,7 +565,7 @@ hexdump -C /srv/nas/User1/suspicious.bin | head -20
 
 ---
 
-## �🐛 Debugging
+## Debugging
 
 ### Service startet nicht
 
