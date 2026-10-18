@@ -170,6 +170,72 @@
             color: #64748b;
             font-size: 1.2rem;
         }
+
+        .pipeline-runbook {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin-bottom: 28px;
+        }
+
+        .pipeline-runbook h2 {
+            color: #34d399;
+            margin: 0 0 12px 0;
+            font-size: 1.5rem;
+            border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .pipeline-runbook h3 {
+            color: #6ee7b7;
+            margin: 20px 0 10px 0;
+            font-size: 1.1rem;
+        }
+
+        .pipeline-runbook p, .pipeline-runbook li {
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+
+        .pipeline-runbook pre {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+            padding: 14px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-size: 0.85rem;
+        }
+
+        .pipeline-runbook code {
+            font-family: 'Courier New', monospace;
+            color: #fbbf24;
+        }
+
+        .pipeline-runbook table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 0.9rem;
+        }
+
+        .pipeline-runbook th, .pipeline-runbook td {
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .pipeline-runbook th {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .pipeline-runbook .path-note {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body>
@@ -181,12 +247,47 @@
     </div>
 
     <div class="container">
-        <p id="pipeline-doc-hint" style="margin-bottom: 16px; padding: 12px 16px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; font-size: 0.95rem;">
-            <strong>Backup-Pipeline Fehleranalyse</strong> (RTB, <code>rtb_wrapper.log</code>, <code>pcloud_sync.log</code>):
-            nach dem Laden der Seite <a href="#backup-pipeline-pi-nas--fehleranalyse" style="color: #34d399;">zum Abschnitt springen</a>
-            oder Strg+F nach <code>rtb_wrapper</code>.
-            Fehlt der Abschnitt: im Repo <code>entropy-watcher-und-clamav-scanner</code> auf dem Server <code>git pull</code> (Commit mit „backup pipeline runbook“).
-        </p>
+        <section class="pipeline-runbook" id="backup-pipeline-fehleranalyse">
+            <h2>Backup-Pipeline (pi-nas) — Fehleranalyse</h2>
+            <p>RTB + pCloud (<code>backup-pipeline.service</code>). Logs: <code>/var/log/backup/rtb_wrapper.log</code>, <code>/var/log/backup/pcloud_sync.log</code>. Entropy-Journal allein reicht nicht.</p>
+
+            <h3>1) Timer / systemd — warum <code>failed</code>?</h3>
+            <pre><code>systemctl is-active backup-pipeline.service
+systemctl list-timers backup-pipeline.timer --no-pager
+
+journalctl -u backup-pipeline.service --since today --no-pager \
+  | grep -E 'Starting|Started|Failed|exit-code|status=|Main process exited'
+
+journalctl -u backup-pipeline.timer --since today --no-pager</code></pre>
+            <ul>
+                <li><code>activating</code> = Lauf noch aktiv (copyfolder kann lange dauern).</li>
+                <li>Exit <strong>2</strong> nach ~1 s = oft Safety-Gate <strong>RED</strong> → siehe <code>rtb_wrapper.log</code>.</li>
+            </ul>
+
+            <h3>2) Safety-Gate &amp; RTB</h3>
+            <pre><code>sudo grep -E 'SafetyGate|ABORT|safety\]|done\]|error\]|pCloud' \
+  /var/log/backup/rtb_wrapper.log | tail -60
+
+/opt/apps/entropywatcher/main/safety_gate.sh; echo "exit=$?"</code></pre>
+            <table>
+                <tr><th>Log</th><th>Bedeutung</th></tr>
+                <tr><td>RED + Honeyfile</td><td>Exit 2 — <code>sudo ausearch -k honeyfile_access --start recent</code></td></tr>
+                <tr><td>YELLOW <code>too_fresh_to_trust</code></td><td>Mit <code>SAFETY_GATE_STRICT=0</code> läuft Backup trotzdem</td></tr>
+                <tr><td><code>[done] RTB erfolgreich</code></td><td>pCloud-Phase läuft / folgt</td></tr>
+            </table>
+
+            <h3>3) pCloud Pool-Sync</h3>
+            <pre><code>sudo tail -f /var/log/backup/pcloud_sync.log
+sudo grep -E 'Struktur geklont|copyfolder: warte' /var/log/backup/pcloud_sync.log | tail -10
+sudo pgrep -af 'wrapper_pcloud|pcloud_push_json_pool' || true</code></pre>
+            <p>Erste Zeile pro Lauf: <code>========== pCloud Sync 1to1 Start ==========</code>. Lange Pause nach <code>Phase 1: Klone Basis-Snapshot</code> = copyfolder (Heartbeat alle 15&nbsp;min).</p>
+
+            <h3>4) Retry</h3>
+            <pre><code>sudo systemctl start backup-pipeline.service</code></pre>
+            <p>Nur wenn Safety-Gate nicht mehr RED. Timing-Diagramme: <a href="timing-diagram-yellow.html">YELLOW</a>, <a href="timing-diagram-red.html">RED</a>.</p>
+            <p class="path-note">Deploy: <code>sync-repos</code> pullt nach <code>/opt/apps/entropywatcher/main</code>. Das Dashboard unter <code>:8080/entropy-watcher-und-clamav-scanner/docs/</code> muss dieselben Dateien servieren (Symlink oder gleicher Clone). Dieser Abschnitt steht fest in <code>MONITORING.html</code> — unabhängig vom Markdown-Laden.</p>
+        </section>
+
         <div id="content" class="loading">
             Lade Dokumentation...
         </div>
@@ -195,7 +296,7 @@
     <script>
         async function loadMarkdown() {
             try {
-                const response = await fetch('MONITORING.md');
+                const response = await fetch('MONITORING.md?v=20261018');
                 const markdown = await response.text();
                 const html = marked.parse(markdown);
                 document.getElementById('content').innerHTML = html;
