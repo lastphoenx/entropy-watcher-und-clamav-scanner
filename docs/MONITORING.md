@@ -2,6 +2,15 @@
 
 Übersicht über Logging, Monitoring und Status-Checks für EntropyWatcher.
 
+**Schnellzugriff**
+
+| Thema | Abschnitt |
+|--------|-----------|
+| **Backup schlägt fehl / `backup-pipeline` `failed` / pCloud hängt** | [Backup-Pipeline (pi-nas) — Fehleranalyse](#backup-pipeline-pi-nas--fehleranalyse) |
+| EntropyWatcher-Logs | [Systemd Journal](#-systemd-journal-empfohlen) |
+| `safety_gate.sh`, YELLOW/RED-Gründe | [Status-Checks](#-status-checks-ad-hoc) · [API Reference](#api-reference---entropywatcherpy-status-response) |
+| Dashboard `live_sg_details` | [Live Safety-Gate Details](#live-safety-gate-details-live_sg_details) |
+
 ---
 
 ## 📊 Systemd Journal (empfohlen)
